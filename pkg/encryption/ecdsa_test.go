@@ -55,8 +55,20 @@ func TestECDSASignAndVerify(t *testing.T) {
 		if err != nil {
 			t.Errorf("unable to sign: %v", err)
 		}
-		if err := key.Verify(message, signature); err != nil {
+		if err = key.Verify(message, signature); err != nil {
 			t.Errorf("signature is invalid")
+		}
+	})
+	t.Run("should fail if signature does not match key", func(t *testing.T) {
+		key, _ := encryption.GenerateECDSAKey()
+		keyOther, _ := encryption.GenerateECDSAKey()
+		message := []byte("hello world")
+		signature, err := key.SignMessage(message)
+		if err != nil {
+			t.Errorf("unable to sign: %v", err)
+		}
+		if err = keyOther.Verify(message, signature); err == nil {
+			t.Errorf("signature should be invalid")
 		}
 	})
 }

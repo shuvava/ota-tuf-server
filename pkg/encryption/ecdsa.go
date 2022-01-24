@@ -10,7 +10,9 @@ import (
 	"math/big"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
+
 	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"github.com/shuvava/ota-tuf-server/pkg/errcodes"
 )
 
 type ecdsaSignature struct {
@@ -91,7 +93,7 @@ func (k *ECDSAKey) Verify(msg, sig []byte) error {
 
 	hash := sha256.Sum256(msg)
 	if !ecdsa.Verify(k.PublicKey, hash[:], signature.R, signature.S) {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: ecdsa signature verification failed")
+		return apperrors.NewAppError(errcodes.ErrorDataValidationECDSAKey, "tuf: ecdsa signature verification failed")
 	}
 	return nil
 }
@@ -99,7 +101,7 @@ func (k *ECDSAKey) Verify(msg, sig []byte) error {
 // VerifyECDSAKey is a helper function to verify an ecdsa key.
 func VerifyECDSAKey(v *ECDSAKey) error {
 	if !v.PublicKey.IsOnCurve(v.PublicKey.X, v.PublicKey.Y) {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: ecdsa key is invalid")
+		return apperrors.NewAppError(errcodes.ErrorDataValidationECDSAKey, "tuf: ecdsa key is invalid")
 	}
 	return nil
 }
@@ -138,7 +140,7 @@ func (k *ECDSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 
 	valueBytes, err := json.Marshal(kv)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataRefValidation, "failed to marshal key: ", err)
+		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal key: ", err)
 	}
 
 	return &data.Key{

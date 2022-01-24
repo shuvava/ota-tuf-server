@@ -92,11 +92,11 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 	}
 	block, _ := pem.Decode(kv.Public)
 	if block == nil {
-		return nil, apperrors.NewAppError(apperrors.ErrorDataRefValidation, "Unable to decode PEM block in public key")
+		return nil, apperrors.NewAppError(apperrors.ErrorDataValidation, "Unable to decode PEM block in public key")
 	}
 	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataRefValidation, "failed to unmarshal public key: ", err)
+		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to unmarshal public key: ", err)
 	}
 	rsaKey := RSAKey{
 		PublicKey: publicKey.(*rsa.PublicKey),
@@ -107,7 +107,7 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 	if block != nil {
 		privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			return nil, apperrors.CreateError(apperrors.ErrorDataRefValidation, "failed to unmarshal private key: ", err)
+			return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to unmarshal private key: ", err)
 		}
 		rsaKey.PrivateKey = privateKey
 	}
@@ -121,7 +121,7 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 // VerifyRSAKey is a helper function to verify a rsa key.
 func VerifyRSAKey(v *RSAKey) error {
 	if v.PublicKey == nil {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "public key is nil")
+		return apperrors.NewAppError(apperrors.ErrorDataValidation, "public key is nil")
 	}
 	return nil
 }
@@ -129,7 +129,7 @@ func VerifyRSAKey(v *RSAKey) error {
 func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 	pub, err := x509.MarshalPKIXPublicKey(k.PublicKey)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataRefValidation, "failed to marshal public key: ", err)
+		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal public key: ", err)
 	}
 	pubBytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PUBLIC KEY",
@@ -139,7 +139,7 @@ func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 
 	valueBytes, err := json.Marshal(kv)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataRefValidation, "failed to marshal key: ", err)
+		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal key: ", err)
 	}
 
 	return &data.Key{

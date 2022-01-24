@@ -64,7 +64,7 @@ func (k *Ed25519Key) Public() string {
 // key and message.
 func (k *Ed25519Key) Verify(msg, sig []byte) error {
 	if !ed25519.Verify(k.PublicKey, msg, sig) {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: ed25519 signature verification failed")
+		return apperrors.NewAppError(apperrors.ErrorDataValidation, "tuf: ed25519 signature verification failed")
 	}
 	return nil
 }
@@ -98,13 +98,13 @@ func UnmarshalEd25519Key(key *data.Key) (*Ed25519Key, error) {
 // VerifyEd25519Key is a helper function to verify an ed25519 key.
 func VerifyEd25519Key(v *Ed25519Key) error {
 	if len(v.PublicKey) != ed25519.PublicKeySize {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: ed25519 public key is invalid")
+		return apperrors.NewAppError(apperrors.ErrorDataValidation, "tuf: ed25519 public key is invalid")
 	}
 	if v.PrivateKey != nil && len(v.PrivateKey) != ed25519.PrivateKeySize {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: ed25519 private key is invalid")
+		return apperrors.NewAppError(apperrors.ErrorDataValidation, "tuf: ed25519 private key is invalid")
 	}
 	if v.PrivateKey != nil && !v.PublicKey.Equal(v.PrivateKey.Public().(ed25519.PublicKey)) {
-		return apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: ed25519 public key does not match private key")
+		return apperrors.NewAppError(apperrors.ErrorDataValidation, "tuf: ed25519 public key does not match private key")
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (k *Ed25519Key) marshalKey(kv rawKey) (*data.Key, error) {
 
 	valueBytes, err := json.Marshal(kv)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataRefValidation, "failed to marshal key: ", err)
+		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal key: ", err)
 	}
 
 	return &data.Key{

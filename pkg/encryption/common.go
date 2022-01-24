@@ -24,5 +24,18 @@ func UnmarshalKey(key *data.Key) (Verifier, error) {
 	case data.KeyTypeECDSA:
 		return UnmarshalECDSAKey(key)
 	}
-	return nil, apperrors.NewAppError(apperrors.ErrorDataRefValidation, "unsupported key type: "+string(key.Type))
+	return nil, apperrors.NewAppError(apperrors.ErrorDataValidation, "unsupported key type: "+string(key.Type))
+}
+
+// NewKey creates a new encryption key of the given type.
+func NewKey(keyType data.KeyType) (Key, error) {
+	switch keyType {
+	case data.KeyTypeEd25519:
+		return GenerateEd25519Key()
+	case data.KeyTypeRSA:
+		return GenerateRSAKey()
+	case data.KeyTypeECDSA:
+		return GenerateECDSAKey()
+	}
+	return nil, apperrors.NewAppError(apperrors.ErrorDataValidation, "unsupported key type: "+string(keyType))
 }

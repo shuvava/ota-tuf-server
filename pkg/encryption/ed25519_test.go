@@ -59,8 +59,20 @@ func TestEd25519SignAndVerify(t *testing.T) {
 		if err != nil {
 			t.Errorf("unable to sign: %v", err)
 		}
-		if err := key.Verify(message, signature); err != nil {
+		if err = key.Verify(message, signature); err != nil {
 			t.Errorf("signature is invalid")
+		}
+	})
+	t.Run("should fail if signature does not match key", func(t *testing.T) {
+		key, _ := encryption.GenerateEd25519Key()
+		keyOther, _ := encryption.GenerateEd25519Key()
+		message := []byte("hello world")
+		signature, err := key.SignMessage(message)
+		if err != nil {
+			t.Errorf("unable to sign: %v", err)
+		}
+		if err = keyOther.Verify(message, signature); err == nil {
+			t.Errorf("signature should be invalid")
 		}
 	})
 }
