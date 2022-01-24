@@ -53,7 +53,7 @@ func DefaultExpires(role RoleType) time.Time {
 func NewRoleType(name string) (RoleType, error) {
 	role := RoleType(name)
 	if _, ok := TopLevelRoles[role]; !ok {
-		return "", apperrors.NewAppError(apperrors.ErrorDataRefValidation, "tuf: invalid role '"+name+"'")
+		return "", apperrors.NewAppError(apperrors.ErrorDataValidation, "tuf: invalid role '"+name+"'")
 	}
 	return role, nil
 }
