@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/shuvava/go-ota-svc-common/apperrors"
-	"github.com/shuvava/ota-tuf-server/internal/db"
-	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"time"
+
 	"go.mongodb.org/mongo-driver/bson"
-
-	"github.com/shuvava/go-logging/logger"
-	intMongo "github.com/shuvava/go-ota-svc-common/db/mongo"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+
+	"github.com/shuvava/go-logging/logger"
+	"github.com/shuvava/go-ota-svc-common/apperrors"
+	intMongo "github.com/shuvava/go-ota-svc-common/db/mongo"
+
+	"github.com/shuvava/ota-tuf-server/internal/db"
+	"github.com/shuvava/ota-tuf-server/pkg/data"
 )
 
 const objectTableName = "tuf_keys"
@@ -34,12 +36,12 @@ type repoKeyDTO struct {
 	Key    keyDTO             `json:"key"`
 }
 
-// RepoKeyMongoRepository implementations of db.RepoKeyRepository for MongoDb repo
+// RepoKeyMongoRepository implementations of db.KeyRepository for MongoDb repo
 type RepoKeyMongoRepository struct {
 	db   *intMongo.Db
 	coll *mongo.Collection
 	log  logger.Logger
-	db.RepoKeyRepository
+	db.KeyRepository
 }
 
 // NewKeyMongoRepository creates new instance of RepoKeyMongoRepository
@@ -55,7 +57,8 @@ func NewKeyMongoRepository(logger logger.Logger, db *intMongo.Db) *RepoKeyMongoR
 // Create persist new data.Object in database
 func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKey) error {
 	log := store.log.WithContext(ctx)
-	log.WithField("RepoId", obj.RepoID).
+	defer log.TrackFuncTime(time.Now())
+	log.WithField("RepoID", obj.RepoID).
 		WithField("KeyID", obj.KeyID).
 		WithField("Role", obj.Role).
 		Debug("Creating new Key")
@@ -73,12 +76,12 @@ func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKe
 	}
 	_, err = store.db.InsertOne(ctx, store.coll, dto)
 	if err == nil {
-		log.WithField("RepoId", obj.RepoID).
+		log.WithField("RepoID", obj.RepoID).
 			WithField("KeyID", obj.KeyID).
 			WithField("Role", obj.Role).
-			Debug("Key created successful")
+			Info("Key created successful")
 	} else {
-		log.WithField("RepoId", obj.RepoID).
+		log.WithField("RepoID", obj.RepoID).
 			WithField("KeyID", obj.KeyID).
 			WithField("Role", obj.Role).
 			Warn("Key creation failed")
@@ -89,7 +92,8 @@ func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKe
 // FindByKeyID returns data.RepoKey by keyID
 func (store *RepoKeyMongoRepository) FindByKeyID(ctx context.Context, repoID data.RepoID, keyID data.KeyID) (*data.RepoKey, error) {
 	log := store.log.WithContext(ctx)
-	log.WithField("RepoId", repoID).
+	defer log.TrackFuncTime(time.Now())
+	log.WithField("RepoID", repoID).
 		WithField("KeyID", keyID).
 		Debug("Looking up RepoKey")
 	filter := getOneRepoKeyFilter(repoID, keyID)
@@ -98,46 +102,50 @@ func (store *RepoKeyMongoRepository) FindByKeyID(ctx context.Context, repoID dat
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
-			log.WithField("RepoId", repoID).
+			log.WithField("RepoID", repoID).
 				WithField("KeyID", keyID).
 				Warn("RepoKey not found")
 		}
 		return nil, err
 	}
-	log.WithField("RepoId", repoID).
+	log.WithField("RepoID", repoID).
 		WithField("KeyID", keyID).
 		Debug("Object Found")
-	model := toModel(dto)
-	return &model, nil
+	model, err := toModel(dto)
+	return &model, err
 }
 
 // FindByRepoId returns data.RepoKey by repoId
 func (store *RepoKeyMongoRepository) FindByRepoId(ctx context.Context, repoID data.RepoID) ([]data.RepoKey, error) {
 	log := store.log.WithContext(ctx)
-	log.WithField("RepoId", repoID).
+	defer log.TrackFuncTime(time.Now())
+	log.WithField("RepoID", repoID).
 		Debug("Looking up RepoKeys")
 
 	filter := bson.D{primitive.E{
 		Key: "$and",
 		Value: bson.A{
-			bson.D{primitive.E{Key: "repo_id", Value: string(repoID)}},
+			bson.D{primitive.E{Key: "repo_id", Value: repoID.String()}},
 		},
 	}}
 	var docs []repoKeyDTO
 	err := store.db.Find(ctx, store.coll, filter, &docs)
 	if err != nil {
-		log.WithField("RepoId", repoID).
+		log.WithField("RepoID", repoID).
 			Debug("Not Found")
 		return nil, err
 	}
 
 	var res []data.RepoKey
 	for _, doc := range docs {
-		obj := toModel(doc)
+		obj, err := toModel(doc)
+		if err != nil {
+			return nil, err
+		}
 		res = append(res, obj)
 	}
 
-	log.WithField("RepoId", repoID).
+	log.WithField("RepoID", repoID).
 		WithField("Count", len(res)).
 		Debug("Lookup completed successful")
 
@@ -147,7 +155,8 @@ func (store *RepoKeyMongoRepository) FindByRepoId(ctx context.Context, repoID da
 // Exists checks if data.RepoKey exists in database
 func (store *RepoKeyMongoRepository) Exists(ctx context.Context, repoID data.RepoID, keyID data.KeyID) (bool, error) {
 	log := store.log.WithContext(ctx)
-	log.WithField("RepoId", repoID).
+	defer log.TrackFuncTime(time.Now())
+	log.WithField("RepoID", repoID).
 		WithField("KeyID", keyID).
 		Debug("Looking up RepoKey")
 	filter := getOneRepoKeyFilter(repoID, keyID)
@@ -162,9 +171,9 @@ func (store *RepoKeyMongoRepository) Exists(ctx context.Context, repoID data.Rep
 func toDTO(obj data.RepoKey) repoKeyDTO {
 	return repoKeyDTO{
 		ID:     primitive.NewObjectID(),
-		RepoID: string(obj.RepoID),
+		RepoID: obj.RepoID.String(),
 		Role:   string(obj.Role),
-		KeyID:  string(obj.KeyID),
+		KeyID:  obj.KeyID.String(),
 		Key: keyDTO{
 			Type:  string(obj.Key.Type),
 			Value: obj.Key.Value,
@@ -172,16 +181,24 @@ func toDTO(obj data.RepoKey) repoKeyDTO {
 	}
 }
 
-func toModel(dto repoKeyDTO) data.RepoKey {
+func toModel(dto repoKeyDTO) (data.RepoKey, error) {
+	repoID, err := data.RepoIDFromString(dto.RepoID)
+	if err != nil {
+		return data.RepoKey{}, err
+	}
+	keyID, err := data.KeyIDFromString(dto.KeyID)
+	if err != nil {
+		return data.RepoKey{}, err
+	}
 	return data.RepoKey{
-		RepoID: data.RepoID(dto.RepoID),
+		RepoID: repoID,
 		Role:   data.RoleType(dto.Role),
-		KeyID:  data.KeyID(dto.KeyID),
+		KeyID:  keyID,
 		Key: data.Key{
 			Type:  data.KeyType(dto.Key.Type),
 			Value: dto.Key.Value,
 		},
-	}
+	}, nil
 }
 
 func getOneRepoKeyFilter(repoID data.RepoID, keyID data.KeyID) bson.D {

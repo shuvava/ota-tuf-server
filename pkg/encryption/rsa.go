@@ -10,7 +10,9 @@ import (
 	"encoding/pem"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
+
 	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"github.com/shuvava/ota-tuf-server/pkg/errcodes"
 )
 
 // RSAKey is
@@ -27,7 +29,7 @@ type RSAKey struct {
 func GenerateRSAKey() (*RSAKey, error) {
 	private, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationRSAKey, "failed to generate key: ", err)
 	}
 	key := RSAKey{
 		PrivateKey: private,
@@ -72,7 +74,11 @@ func (k *RSAKey) Public() string {
 // SignMessage signs a message with the private key.
 func (k *RSAKey) SignMessage(message []byte) ([]byte, error) {
 	hash := sha256.Sum256(message)
-	return rsa.SignPSS(rand.Reader, k.PrivateKey, crypto.SHA256, hash[:], &rsa.PSSOptions{})
+	keySig, err := rsa.SignPSS(rand.Reader, k.PrivateKey, crypto.SHA256, hash[:], &rsa.PSSOptions{})
+	if err != nil {
+		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationRSAKey, "failed to sign message: ", err)
+	}
+	return keySig, nil
 }
 
 // Verify takes a message and signature, all as byte slices,
@@ -81,7 +87,10 @@ func (k *RSAKey) SignMessage(message []byte) ([]byte, error) {
 func (k *RSAKey) Verify(msg, sig []byte) error {
 	hash := sha256.Sum256(msg)
 
-	return rsa.VerifyPSS(k.PublicKey, crypto.SHA256, hash[:], sig, &rsa.PSSOptions{})
+	if err := rsa.VerifyPSS(k.PublicKey, crypto.SHA256, hash[:], sig, &rsa.PSSOptions{}); err != nil {
+		return apperrors.CreateError(errcodes.ErrorDataSerializationRSAKey, "failed to verify signature: ", err)
+	}
+	return nil
 }
 
 // UnmarshalRSAKey is a helper function to unmarshal an RSA key from a data.Key.
@@ -92,11 +101,11 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 	}
 	block, _ := pem.Decode(kv.Public)
 	if block == nil {
-		return nil, apperrors.NewAppError(apperrors.ErrorDataValidation, "Unable to decode PEM block in public key")
+		return nil, apperrors.NewAppError(errcodes.ErrorDataValidationRSAKey, "Unable to decode PEM block in public key")
 	}
 	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to unmarshal public key: ", err)
+		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to unmarshal public key: ", err)
 	}
 	rsaKey := RSAKey{
 		PublicKey: publicKey.(*rsa.PublicKey),
@@ -107,7 +116,7 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 	if block != nil {
 		privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 		if err != nil {
-			return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to unmarshal private key: ", err)
+			return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to unmarshal private key: ", err)
 		}
 		rsaKey.PrivateKey = privateKey
 	}
@@ -121,7 +130,7 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 // VerifyRSAKey is a helper function to verify a rsa key.
 func VerifyRSAKey(v *RSAKey) error {
 	if v.PublicKey == nil {
-		return apperrors.NewAppError(apperrors.ErrorDataValidation, "public key is nil")
+		return apperrors.NewAppError(errcodes.ErrorDataValidationRSAKey, "public key is nil")
 	}
 	return nil
 }
@@ -129,7 +138,7 @@ func VerifyRSAKey(v *RSAKey) error {
 func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 	pub, err := x509.MarshalPKIXPublicKey(k.PublicKey)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal public key: ", err)
+		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to marshal public key: ", err)
 	}
 	pubBytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PUBLIC KEY",
@@ -139,7 +148,7 @@ func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 
 	valueBytes, err := json.Marshal(kv)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal key: ", err)
+		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to marshal key: ", err)
 	}
 
 	return &data.Key{

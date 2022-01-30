@@ -33,7 +33,7 @@ type ECDSAKey struct {
 func GenerateECDSAKey() (*ECDSAKey, error) {
 	private, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationECDSAKey, "failed to generate key: ", err)
 	}
 	signer := ECDSAKey{
 		PrivateKey: private,
@@ -72,12 +72,12 @@ func (k *ECDSAKey) SignMessage(message []byte) ([]byte, error) {
 	hash := sha256.Sum256(message)
 	r, s, err := ecdsa.Sign(rand.Reader, k.PrivateKey, hash[:])
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorGeneric, "failed to sign message: ", err)
+		return nil, apperrors.CreateError(errcodes.ErrorDataSigningECDSAKey, "failed to sign message: ", err)
 	}
 	sigToMarshal := ecdsaSignature{R: r, S: s}
 	keySig, err := asn1.Marshal(sigToMarshal)
 	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorGeneric, "failed to sign message: ", err)
+		return nil, apperrors.CreateError(errcodes.ErrorDataSigningECDSAKey, "failed to sign message: ", err)
 	}
 	return keySig, nil
 }

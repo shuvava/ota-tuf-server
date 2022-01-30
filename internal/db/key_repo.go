@@ -6,8 +6,8 @@ import (
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 )
 
-// RepoKeyRepository is the interface for the data.RepoKey repository.
-type RepoKeyRepository interface {
+// KeyRepository is the interface for the data.RepoKey repository.
+type KeyRepository interface {
 	// Create persist new data.Object in database
 	Create(ctx context.Context, obj data.RepoKey) error
 	// FindByRepoId returns data.RepoKey by repoId
