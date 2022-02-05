@@ -4,7 +4,10 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 
@@ -127,4 +130,10 @@ func (k *Ed25519Key) marshalKey(kv rawKey) (*data.Key, error) {
 		Type:  k.keyType,
 		Value: valueBytes,
 	}, nil
+}
+
+// FingerprintSHA256 returns the SHA256 hex fingerprint of the public key.
+func (k *Ed25519Key) FingerprintSHA256() string {
+	hash := sha256.Sum256(k.PublicKey)
+	return strings.ToLower(hex.EncodeToString(hash[:]))
 }

@@ -24,6 +24,21 @@ func TestEd25519Marshaling(t *testing.T) {
 			t.Errorf("want: %v, got: %v", key.PrivateKey, want.PrivateKey)
 		}
 	})
+	t.Run("MarshalAllData should work for public key only", func(t *testing.T) {
+		key, _ := encryption.GenerateEd25519Key()
+		dtKey, err := key.MarshalPublicData()
+		if err != nil {
+			t.Errorf("unable to marshal key: %v", err)
+		}
+		want, err := encryption.UnmarshalEd25519Key(dtKey)
+		if err != nil {
+			t.Errorf("unable to unmarshal key: %v", err)
+		}
+		_, err = want.MarshalAllData()
+		if err != nil {
+			t.Errorf("unable to marshal key: %v", err)
+		}
+	})
 	t.Run("private key should be NOT present in public data", func(t *testing.T) {
 		key, _ := encryption.GenerateEd25519Key()
 		dtKey, err := key.MarshalPublicData()

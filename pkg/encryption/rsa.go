@@ -6,8 +6,10 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 
@@ -50,11 +52,14 @@ func (k *RSAKey) MarshalPublicData() (*data.Key, error) {
 
 // MarshalAllData returns the data.Key object associated with the verifier contains public and private keys.
 func (k *RSAKey) MarshalAllData() (*data.Key, error) {
-	pri := x509.MarshalPKCS1PrivateKey(k.PrivateKey)
-	priBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: pri,
-	})
+	var priBytes []byte
+	if k.PrivateKey != nil {
+		pri := x509.MarshalPKCS1PrivateKey(k.PrivateKey)
+		priBytes = pem.EncodeToMemory(&pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: pri,
+		})
+	}
 
 	return k.marshalKey(rawKey{
 		Private: priBytes,
@@ -155,4 +160,10 @@ func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 		Type:  k.keyType,
 		Value: valueBytes,
 	}, nil
+}
+
+// FingerprintSHA256 returns the SHA256 hex fingerprint of the public key.
+func (k *RSAKey) FingerprintSHA256() string {
+	hash := sha256.Sum256(k.PublicKey.N.Bytes())
+	return strings.ToLower(hex.EncodeToString(hash[:]))
 }

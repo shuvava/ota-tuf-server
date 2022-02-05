@@ -39,3 +39,19 @@ func NewKey(keyType data.KeyType) (Key, error) {
 	}
 	return nil, apperrors.NewAppError(apperrors.ErrorDataValidation, "unsupported key type: "+string(keyType))
 }
+
+// FingerprintSHA256 returns the SHA256 fingerprint of the given key.
+func FingerprintSHA256(key Key) (string, error) {
+	switch key.Type() {
+	case data.KeyTypeEd25519:
+		k := key.(*Ed25519Key)
+		return k.FingerprintSHA256(), nil
+	case data.KeyTypeRSA:
+		k := key.(*RSAKey)
+		return k.FingerprintSHA256(), nil
+	case data.KeyTypeECDSA:
+		k := key.(*ECDSAKey)
+		return k.FingerprintSHA256(), nil
+	}
+	return "", apperrors.NewAppError(apperrors.ErrorDataValidation, "unsupported key type: "+string(key.Type()))
+}

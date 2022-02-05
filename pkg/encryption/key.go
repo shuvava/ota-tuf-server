@@ -8,4 +8,6 @@ type Key interface {
 	Type() data.KeyType
 	// MarshalAllData returns the data.Key object associated with the verifier contains public and private keys.
 	MarshalAllData() (*data.Key, error)
+	// Public this is the public string used as a unique identifier for the verifier instance.
+	Public() string
 }

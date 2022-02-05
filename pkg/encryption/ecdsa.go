@@ -6,8 +6,10 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/asn1"
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
+	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 
@@ -50,8 +52,9 @@ func (k *ECDSAKey) Type() data.KeyType {
 
 // MarshalAllData returns the data.Key object associated with the verifier contains public and private keys.
 func (k *ECDSAKey) MarshalAllData() (*data.Key, error) {
-	key := rawKey{
-		Private: k.PrivateKey.D.Bytes(),
+	key := rawKey{}
+	if k.PrivateKey != nil {
+		key.Private = k.PrivateKey.D.Bytes()
 	}
 
 	return k.marshalKey(key)
@@ -147,4 +150,10 @@ func (k *ECDSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 		Type:  k.keyType,
 		Value: valueBytes,
 	}, nil
+}
+
+// FingerprintSHA256 returns the SHA256 hex fingerprint of the public key.
+func (k *ECDSAKey) FingerprintSHA256() string {
+	hash := sha256.Sum256(elliptic.Marshal(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y))
+	return strings.ToLower(hex.EncodeToString(hash[:]))
 }

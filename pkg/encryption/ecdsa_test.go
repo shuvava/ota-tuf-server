@@ -20,6 +20,21 @@ func TestECDSAMarshaling(t *testing.T) {
 			t.Errorf("unable to unmarshal key: %v", err)
 		}
 	})
+	t.Run("MarshalAllData should work for public key only", func(t *testing.T) {
+		key, _ := encryption.GenerateECDSAKey()
+		dtKey, err := key.MarshalPublicData()
+		if err != nil {
+			t.Errorf("unable to marshal key: %v", err)
+		}
+		want, err := encryption.UnmarshalECDSAKey(dtKey)
+		if err != nil {
+			t.Errorf("unable to unmarshal key: %v", err)
+		}
+		_, err = want.MarshalAllData()
+		if err != nil {
+			t.Errorf("unable to marshal key: %v", err)
+		}
+	})
 	t.Run("private key should be NOT present in public data", func(t *testing.T) {
 		key, _ := encryption.GenerateECDSAKey()
 		dtKey, err := key.MarshalPublicData()
