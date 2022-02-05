@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/fsnotify/fsnotify v1.5.1
 	github.com/shuvava/go-logging v1.0.5
-	github.com/shuvava/go-ota-svc-common v1.0.12
+	github.com/shuvava/go-ota-svc-common v1.0.14
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.9.0
 	go.mongodb.org/mongo-driver v1.7.4

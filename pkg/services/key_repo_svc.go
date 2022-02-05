@@ -10,6 +10,7 @@ import (
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
+// RepositoryService is the service responsible for managing the repository
 type RepositoryService struct {
 	log logger.Logger
 	db  db.KeyRepository
@@ -34,13 +35,16 @@ func (svc *RepositoryService) CreateNewRepository(ctx context.Context, repoID da
 			return err
 		}
 		keySerialized, err := key.MarshalAllData()
+		if err != nil {
+			return err
+		}
 		keys[i] = data.RepoKey{
 			RepoID: repoID,
 			Role:   role,
-			KeyID:  data.NewKeyID(repoID, role),
+			KeyID:  data.NewKeyID(key),
 			Key:    *keySerialized,
 		}
-		i += 1
+		i++
 	}
 	for _, key := range keys {
 		err := svc.db.Create(ctx, key)

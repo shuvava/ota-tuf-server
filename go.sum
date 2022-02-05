@@ -402,6 +402,8 @@ github.com/shuvava/go-logging v1.0.5 h1:4XKL4joT6kzGuXNMizA/6zLm+uQNH4BvTCFLHf2J
 github.com/shuvava/go-logging v1.0.5/go.mod h1:4ReA5wGShDtIh+BDwKA0La1/Cpz3btVkQZF+RisGafw=
 github.com/shuvava/go-ota-svc-common v1.0.12 h1:xVZmNK+C1KJk2iXaURZoR2L4iT3NJ1HRkA80OBuyBF0=
 github.com/shuvava/go-ota-svc-common v1.0.12/go.mod h1:Togq44Qczhy3xBWub1gq1dxGtwEZfBWqy7/XPRxv49Q=
+github.com/shuvava/go-ota-svc-common v1.0.14 h1:N4sY2BYfGuwuBN2oAUFT6U8KF29KLCZ1BG7NeoPsDBo=
+github.com/shuvava/go-ota-svc-common v1.0.14/go.mod h1:Togq44Qczhy3xBWub1gq1dxGtwEZfBWqy7/XPRxv49Q=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=

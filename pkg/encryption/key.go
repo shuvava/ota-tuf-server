@@ -10,4 +10,6 @@ type Key interface {
 	MarshalAllData() (*data.Key, error)
 	// Public this is the public string used as a unique identifier for the verifier instance.
 	Public() string
+	// FingerprintSHA256 returns the SHA256 fingerprint of the given key.
+	FingerprintSHA256() string
 }
