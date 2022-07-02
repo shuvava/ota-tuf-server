@@ -8,8 +8,16 @@ type Key interface {
 	Type() data.KeyType
 	// MarshalAllData returns the data.Key object associated with the verifier contains public and private keys.
 	MarshalAllData() (*data.Key, error)
+	// MarshalPublicData returns the data.Key object associated with the verifier contains only public key.
+	MarshalPublicData() (*data.Key, error)
 	// Public this is the public string used as a unique identifier for the verifier instance.
 	Public() string
 	// FingerprintSHA256 returns the SHA256 fingerprint of the given key.
 	FingerprintSHA256() string
+}
+
+// NewKeyID creates a new KeyID
+func NewKeyID(key Key) data.KeyID {
+	keyID := data.KeyID(key.FingerprintSHA256())
+	return keyID
 }

@@ -26,9 +26,12 @@ type Server struct {
 	config *config.AppConfig
 	mu     sync.Mutex
 	svc    struct {
-		Db      intCmnDb.BaseRepository
-		KeyRepo db.KeyRepository
-		KeySvc  *services.RepositoryService
+		Db            intCmnDb.BaseRepository
+		KeyRepo       db.KeyRepository
+		Repo          db.TufRepoRepository
+		SignedContent db.TufSignedContent
+		RepoSvc       *services.RepositoryService
+		KeyRepoSvc    *services.KeyRepositoryService
 	}
 }
 
@@ -57,7 +60,7 @@ func (s *Server) OnConfigChange(newCfg *config.AppConfig) {
 	lvl := logger.ToLogLevel(newCfg.LogLevel)
 	_ = s.log.SetLevel(lvl)
 	s.config = newCfg
-	s.initServices()
+	s.initServices(context.Background())
 
 	s.config.PrintConfig(s.log)
 }

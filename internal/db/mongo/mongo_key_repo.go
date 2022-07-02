@@ -19,7 +19,7 @@ import (
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 )
 
-const objectTableName = "tuf_keys"
+const keyRepoTableName = "tuf_keys"
 
 type keyDTO struct {
 	// Type is key type
@@ -30,10 +30,10 @@ type keyDTO struct {
 
 type repoKeyDTO struct {
 	ID     primitive.ObjectID `bson:"_id,omitempty"`
-	RepoID string             `json:"repo_id"`
-	Role   string             `json:"role"`
-	KeyID  string             `json:"key_id"`
-	Key    keyDTO             `json:"key"`
+	RepoID string             `bson:"repo_id"`
+	Role   string             `bson:"role"`
+	KeyID  string             `bson:"key_id"`
+	Key    keyDTO             `bson:"key"`
 }
 
 // RepoKeyMongoRepository implementations of db.KeyRepository for MongoDb repo
@@ -49,12 +49,12 @@ func NewKeyMongoRepository(logger logger.Logger, db *intMongo.Db) *RepoKeyMongoR
 	log := logger.SetOperation("KeyRepo")
 	return &RepoKeyMongoRepository{
 		db:   db,
-		coll: db.GetCollection(objectTableName),
+		coll: db.GetCollection(keyRepoTableName),
 		log:  log,
 	}
 }
 
-// Create persist new data.Object in database
+// Create persist new data.RepoKey in database
 func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKey) error {
 	log := store.log.WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
@@ -63,7 +63,6 @@ func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKe
 		WithField("Role", obj.Role).
 		Debug("Creating new Key")
 
-	dto := toDTO(obj)
 	exists, err := store.Exists(ctx, obj.RepoID, obj.KeyID)
 	if err != nil {
 		return err
@@ -74,6 +73,7 @@ func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKe
 			ErrorRepoKeyErrorDbAlreadyExist,
 			"Failed to add new DB record", err)
 	}
+	dto := toRepoKeyDTO(obj)
 	_, err = store.db.InsertOne(ctx, store.coll, dto)
 	if err == nil {
 		log.WithField("RepoID", obj.RepoID).
@@ -111,12 +111,12 @@ func (store *RepoKeyMongoRepository) FindByKeyID(ctx context.Context, repoID dat
 	log.WithField("RepoID", repoID).
 		WithField("KeyID", keyID).
 		Debug("Object Found")
-	model, err := toModel(dto)
+	model, err := toRepoKeyModel(dto)
 	return &model, err
 }
 
-// FindByRepoId returns data.RepoKey by repoId
-func (store *RepoKeyMongoRepository) FindByRepoId(ctx context.Context, repoID data.RepoID) ([]data.RepoKey, error) {
+// FindByRepoID returns data.RepoKey by repoId
+func (store *RepoKeyMongoRepository) FindByRepoID(ctx context.Context, repoID data.RepoID) ([]data.RepoKey, error) {
 	log := store.log.WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("RepoID", repoID).
@@ -138,7 +138,7 @@ func (store *RepoKeyMongoRepository) FindByRepoId(ctx context.Context, repoID da
 
 	var res []data.RepoKey
 	for _, doc := range docs {
-		obj, err := toModel(doc)
+		obj, err := toRepoKeyModel(doc)
 		if err != nil {
 			return nil, err
 		}
@@ -167,8 +167,29 @@ func (store *RepoKeyMongoRepository) Exists(ctx context.Context, repoID data.Rep
 	return cnt > 0, nil
 }
 
-// toDTO converts data.RepoKey to DTO
-func toDTO(obj data.RepoKey) repoKeyDTO {
+// ExistsKeyRole checks if data.RepoKey with role exists in database
+func (store *RepoKeyMongoRepository) ExistsKeyRole(ctx context.Context, repoID data.RepoID, role data.RoleType) (bool, error) {
+	log := store.log.WithContext(ctx)
+	defer log.TrackFuncTime(time.Now())
+	log.WithField("RepoID", repoID).
+		WithField("Role", role).
+		Debug("Looking up RepoKey")
+	filter := bson.D{primitive.E{
+		Key: "$and",
+		Value: bson.A{
+			bson.D{primitive.E{Key: "repo_id", Value: repoID}},
+			bson.D{primitive.E{Key: "role", Value: role}},
+		},
+	}}
+	cnt, err := store.db.Count(ctx, store.coll, filter)
+	if err != nil {
+		return false, err
+	}
+	return cnt > 0, nil
+}
+
+// toRepoKeyDTO converts data.RepoKey to DTO
+func toRepoKeyDTO(obj data.RepoKey) repoKeyDTO {
 	return repoKeyDTO{
 		ID:     primitive.NewObjectID(),
 		RepoID: obj.RepoID.String(),
@@ -181,7 +202,7 @@ func toDTO(obj data.RepoKey) repoKeyDTO {
 	}
 }
 
-func toModel(dto repoKeyDTO) (data.RepoKey, error) {
+func toRepoKeyModel(dto repoKeyDTO) (data.RepoKey, error) {
 	repoID, err := data.RepoIDFromString(dto.RepoID)
 	if err != nil {
 		return data.RepoKey{}, err

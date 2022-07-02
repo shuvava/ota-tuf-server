@@ -5,14 +5,13 @@ import (
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/go-ota-svc-common/data"
-
-	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 // KeyID is a type of TUF server key id
 // It is internally a fingerprint of the public key
 type KeyID string
 
+// ErrorKeyIDValidation is error type for KeyID validations errors
 const ErrorKeyIDValidation = apperrors.ErrorDataValidation + ":KeyID"
 
 func (k KeyID) String() string {
@@ -30,13 +29,7 @@ func (k KeyID) Validate() error {
 	return nil
 }
 
-// NewKeyID creates a new KeyID
-func NewKeyID(key encryption.Key) KeyID {
-	keyID := KeyID(key.FingerprintSHA256())
-	return keyID
-}
-
-//	KeyIDFromString returns a new KeyID from a string
+// KeyIDFromString returns a new KeyID from a string
 func KeyIDFromString(s string) (KeyID, error) {
 	keyID := KeyID(s)
 	if err := keyID.Validate(); err != nil {

@@ -10,47 +10,43 @@ import (
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
-// RepositoryService is the service responsible for managing the repository
-type RepositoryService struct {
+// KeyRepositoryService is the service responsible for managing keys of repositories
+type KeyRepositoryService struct {
 	log logger.Logger
 	db  db.KeyRepository
 }
 
-// NewRepositoryService creates new instance of services.RepositoryService
-func NewRepositoryService(l logger.Logger, db db.KeyRepository) *RepositoryService {
-	log := l.SetOperation("repository-service")
-	return &RepositoryService{
+// NewKeyRepositoryService creates new instance of services.KeyRepositoryService
+func NewKeyRepositoryService(l logger.Logger, db db.KeyRepository) *KeyRepositoryService {
+	log := l.SetArea("key-repository-service")
+	return &KeyRepositoryService{
 		log: log,
 		db:  db,
 	}
 }
 
-// CreateNewRepository initializes new repository by creating and persisting new key pair for data.TopLevelRoles
-func (svc *RepositoryService) CreateNewRepository(ctx context.Context, repoID data.RepoID, keyType data.KeyType) error {
-	keys := make([]data.RepoKey, len(data.TopLevelRoles))
-	i := 0
-	for role := range data.TopLevelRoles {
-		key, err := encryption.NewKey(keyType)
-		if err != nil {
-			return err
-		}
-		keySerialized, err := key.MarshalAllData()
-		if err != nil {
-			return err
-		}
-		keys[i] = data.RepoKey{
-			RepoID: repoID,
-			Role:   role,
-			KeyID:  data.NewKeyID(key),
-			Key:    *keySerialized,
-		}
-		i++
+// CreateNewKey creates new repository key
+func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repoID data.RepoID, role data.RoleType, keyType data.KeyType) (data.KeyID, error) {
+	key, err := encryption.NewKey(keyType)
+	if err != nil {
+		return "", err
 	}
-	for _, key := range keys {
-		err := svc.db.Create(ctx, key)
-		if err != nil {
-			return err
-		}
+	keySerialized, err := key.MarshalAllData()
+	if err != nil {
+		return "", err
 	}
-	return nil
+	keyObj := data.RepoKey{
+		RepoID: repoID,
+		Role:   role,
+		KeyID:  encryption.NewKeyID(key),
+		Key:    *keySerialized,
+	}
+	err = svc.db.Create(ctx, keyObj)
+
+	return keyObj.KeyID, err
+}
+
+// ExistsKeyRole checks if data.RepoKey with role exists in database
+func (svc *KeyRepositoryService) ExistsKeyRole(ctx context.Context, repoID data.RepoID, role data.RoleType) (bool, error) {
+	return svc.db.ExistsKeyRole(ctx, repoID, role)
 }

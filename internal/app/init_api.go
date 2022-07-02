@@ -35,7 +35,7 @@ func (s *Server) initWebServer() {
 	e.Use(cmnapi.ServerHeader(version.AppName, version.Version))
 	initHealthRoutes(s, e)
 	v1Group := e.Group(routeAPIVer1, middleware.RequestID())
-	initKeyRepoRoutes(s, v1Group)
+	initRepoRoutes(s, v1Group)
 
 	// Enable metrics middleware
 	p := prometheus.NewPrometheus("echo", nil)
@@ -44,9 +44,21 @@ func (s *Server) initWebServer() {
 	s.Echo = e
 }
 
-func initKeyRepoRoutes(s *Server, group *echo.Group) {
-	group.POST(api.PathCreateRoot, func(c echo.Context) error {
-		return api.CreateRoot(c, s.svc.KeySvc)
+func initRepoRoutes(s *Server, group *echo.Group) {
+	group.POST(api.PathRepoServerRepoWithNameSpaceResolver, func(c echo.Context) error {
+		return api.CreateRoot(c, s.svc.RepoSvc)
+	})
+	group.POST(api.PathRepoServerRepo, func(c echo.Context) error {
+		return api.CreateRoot(c, s.svc.RepoSvc)
+	})
+	group.POST(api.PathKeyServerRepo, func(c echo.Context) error {
+		return api.CreateRoot(c, s.svc.RepoSvc)
+	})
+	group.PUT(api.PathKeyServerRepo, func(c echo.Context) error {
+		return api.CreateRoot(c, s.svc.RepoSvc)
+	})
+	group.GET(api.PathRepoServerRepos, func(c echo.Context) error {
+		return api.ListRepos(c, s.svc.RepoSvc)
 	})
 }
 
