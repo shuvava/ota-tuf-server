@@ -2,12 +2,18 @@ package encryption_test
 
 import (
 	"encoding/json"
-	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 	"testing"
 )
 
 func TestRSAMarshaling(t *testing.T) {
+	t.Run("RSA key should have correct type", func(t *testing.T) {
+		key, _ := encryption.GenerateRSAKey()
+		tkey := key.Type()
+		if tkey != encryption.KeyTypeRSA {
+			t.Errorf("key type: is incorrect: %v", tkey)
+		}
+	})
 	t.Run("should be able to unmarshal key", func(t *testing.T) {
 		key, _ := encryption.GenerateRSAKey()
 		dtKey, err := key.MarshalAllData()
@@ -50,8 +56,8 @@ func TestRSAMarshaling(t *testing.T) {
 	})
 	t.Run("error should be thrown if bad key", func(t *testing.T) {
 		badKeyValue, _ := json.Marshal(true)
-		badKey := data.Key{
-			Type:  data.KeyTypeRSA,
+		badKey := encryption.SerializedKey{
+			Type:  encryption.KeyTypeRSA,
 			Value: badKeyValue,
 		}
 		_, err := encryption.UnmarshalRSAKey(&badKey)

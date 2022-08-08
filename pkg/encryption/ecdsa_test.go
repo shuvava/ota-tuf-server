@@ -4,11 +4,17 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 func TestECDSAMarshaling(t *testing.T) {
+	t.Run("ECDSA key should have correct type", func(t *testing.T) {
+		key, _ := encryption.GenerateECDSAKey()
+		tkey := key.Type()
+		if tkey != encryption.KeyTypeECDSA {
+			t.Errorf("key type: is incorrect: %v", tkey)
+		}
+	})
 	t.Run("should be able to unmarshal key", func(t *testing.T) {
 		key, _ := encryption.GenerateECDSAKey()
 		dtKey, err := key.MarshalAllData()
@@ -51,8 +57,8 @@ func TestECDSAMarshaling(t *testing.T) {
 	})
 	t.Run("error should be thrown if bad key", func(t *testing.T) {
 		badKeyValue, _ := json.Marshal(true)
-		badKey := data.Key{
-			Type:  data.KeyTypeECDSA,
+		badKey := encryption.SerializedKey{
+			Type:  encryption.KeyTypeECDSA,
 			Value: badKeyValue,
 		}
 		_, err := encryption.UnmarshalECDSAKey(&badKey)

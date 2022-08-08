@@ -5,11 +5,17 @@ import (
 	"testing"
 
 	intData "github.com/shuvava/ota-tuf-server/internal/data"
-	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 func TestEd25519Marshaling(t *testing.T) {
+	t.Run("Ed25519 key should have correct type", func(t *testing.T) {
+		key, _ := encryption.GenerateEd25519Key()
+		tkey := key.Type()
+		if tkey != encryption.KeyTypeEd25519 {
+			t.Errorf("key type: is incorrect: %v", tkey)
+		}
+	})
 	t.Run("should be able to unmarshal key", func(t *testing.T) {
 		key, _ := encryption.GenerateEd25519Key()
 		dtKey, err := key.MarshalAllData()
@@ -55,8 +61,8 @@ func TestEd25519Marshaling(t *testing.T) {
 	})
 	t.Run("error should be thrown if bad key", func(t *testing.T) {
 		badKeyValue, _ := json.Marshal(true)
-		badKey := data.Key{
-			Type:  data.KeyTypeEd25519,
+		badKey := encryption.SerializedKey{
+			Type:  encryption.KeyTypeEd25519,
 			Value: badKeyValue,
 		}
 		_, err := encryption.UnmarshalEd25519Key(&badKey)

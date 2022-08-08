@@ -13,7 +13,6 @@ import (
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 
-	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/errcodes"
 )
 
@@ -28,7 +27,16 @@ type ECDSAKey struct {
 	Signer
 	PublicKey  *ecdsa.PublicKey
 	PrivateKey *ecdsa.PrivateKey
-	keyType    data.KeyType
+	keyType    KeyType
+}
+
+// NewECDSAKey creates new ECDSAKey
+func NewECDSAKey(public *ecdsa.PublicKey, private *ecdsa.PrivateKey) *ECDSAKey {
+	return &ECDSAKey{
+		PrivateKey: private,
+		PublicKey:  public,
+		keyType:    KeyTypeECDSA,
+	}
 }
 
 // GenerateECDSAKey generates a new ecdsa private key and returns it
@@ -37,21 +45,17 @@ func GenerateECDSAKey() (*ECDSAKey, error) {
 	if err != nil {
 		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationECDSAKey, "failed to generate key: ", err)
 	}
-	signer := ECDSAKey{
-		PrivateKey: private,
-		PublicKey:  &private.PublicKey,
-		keyType:    data.KeyTypeECDSA,
-	}
-	return &signer, nil
+	signer := NewECDSAKey(&private.PublicKey, private)
+	return signer, nil
 }
 
 // Type returns the type of key.
-func (k *ECDSAKey) Type() data.KeyType {
+func (k *ECDSAKey) Type() KeyType {
 	return k.keyType
 }
 
-// MarshalAllData returns the data.Key object associated with the verifier contains public and private keys.
-func (k *ECDSAKey) MarshalAllData() (*data.Key, error) {
+// MarshalAllData returns the data.SerializedKey object associated with the verifier contains public and private keys.
+func (k *ECDSAKey) MarshalAllData() (*SerializedKey, error) {
 	key := rawKey{}
 	if k.PrivateKey != nil {
 		key.Private = k.PrivateKey.D.Bytes()
@@ -60,8 +64,8 @@ func (k *ECDSAKey) MarshalAllData() (*data.Key, error) {
 	return k.marshalKey(key)
 }
 
-// MarshalPublicData returns the data.Key object associated with the verifier contains only public key.
-func (k *ECDSAKey) MarshalPublicData() (*data.Key, error) {
+// MarshalPublicData returns the data.SerializedKey object associated with the verifier contains only public key.
+func (k *ECDSAKey) MarshalPublicData() (*SerializedKey, error) {
 	return k.marshalKey(rawKey{})
 }
 
@@ -109,8 +113,8 @@ func VerifyECDSAKey(v *ECDSAKey) error {
 	return nil
 }
 
-// UnmarshalECDSAKey is a helper function to unmarshal an ecdsa key from a data.Key.
-func UnmarshalECDSAKey(key *data.Key) (*ECDSAKey, error) {
+// UnmarshalECDSAKey is a helper function to unmarshal an ecdsa key from a data.SerializedKey.
+func UnmarshalECDSAKey(key *SerializedKey) (*ECDSAKey, error) {
 	var kv rawKey
 	if err := json.Unmarshal(key.Value, &kv); err != nil {
 		return nil, err
@@ -121,10 +125,7 @@ func UnmarshalECDSAKey(key *data.Key) (*ECDSAKey, error) {
 		X:     x,
 		Y:     y,
 	}
-	ecdsaKey := ECDSAKey{
-		PublicKey: &publicKey,
-		keyType:   data.KeyTypeECDSA,
-	}
+	ecdsaKey := NewECDSAKey(&publicKey, nil)
 	if len(kv.Private) > 0 {
 		privateKey := ecdsa.PrivateKey{
 			PublicKey: publicKey,
@@ -132,13 +133,13 @@ func UnmarshalECDSAKey(key *data.Key) (*ECDSAKey, error) {
 		}
 		ecdsaKey.PrivateKey = &privateKey
 	}
-	if err := VerifyECDSAKey(&ecdsaKey); err != nil {
+	if err := VerifyECDSAKey(ecdsaKey); err != nil {
 		return nil, err
 	}
-	return &ecdsaKey, nil
+	return ecdsaKey, nil
 }
 
-func (k *ECDSAKey) marshalKey(kv rawKey) (*data.Key, error) {
+func (k *ECDSAKey) marshalKey(kv rawKey) (*SerializedKey, error) {
 	kv.Public = elliptic.Marshal(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y)
 
 	valueBytes, err := json.Marshal(kv)
@@ -146,7 +147,7 @@ func (k *ECDSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal key: ", err)
 	}
 
-	return &data.Key{
+	return &SerializedKey{
 		Type:  k.keyType,
 		Value: valueBytes,
 	}, nil

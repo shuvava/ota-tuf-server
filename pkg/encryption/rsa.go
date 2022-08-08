@@ -13,7 +13,6 @@ import (
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 
-	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/errcodes"
 )
 
@@ -24,7 +23,16 @@ type RSAKey struct {
 	Signer
 	PublicKey  *rsa.PublicKey
 	PrivateKey *rsa.PrivateKey
-	keyType    data.KeyType
+	keyType    KeyType
+}
+
+// NewRSAKey creates new RSAKey
+func NewRSAKey(public *rsa.PublicKey, private *rsa.PrivateKey) *RSAKey {
+	return &RSAKey{
+		PrivateKey: private,
+		PublicKey:  public,
+		keyType:    KeyTypeRSA,
+	}
 }
 
 // GenerateRSAKey generates a new rsa private key and returns it
@@ -33,25 +41,22 @@ func GenerateRSAKey() (*RSAKey, error) {
 	if err != nil {
 		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationRSAKey, "failed to generate key: ", err)
 	}
-	key := RSAKey{
-		PrivateKey: private,
-		PublicKey:  private.Public().(*rsa.PublicKey),
-	}
-	return &key, nil
+	key := NewRSAKey(private.Public().(*rsa.PublicKey), private)
+	return key, nil
 }
 
 // Type returns the type of key.
-func (k *RSAKey) Type() data.KeyType {
-	return data.KeyTypeRSA
+func (k *RSAKey) Type() KeyType {
+	return k.keyType
 }
 
-// MarshalPublicData returns the data.Key object associated with the verifier contains only public key.
-func (k *RSAKey) MarshalPublicData() (*data.Key, error) {
+// MarshalPublicData returns the data.SerializedKey object associated with the verifier contains only public key.
+func (k *RSAKey) MarshalPublicData() (*SerializedKey, error) {
 	return k.marshalKey(rawKey{})
 }
 
-// MarshalAllData returns the data.Key object associated with the verifier contains public and private keys.
-func (k *RSAKey) MarshalAllData() (*data.Key, error) {
+// MarshalAllData returns the data.SerializedKey object associated with the verifier contains public and private keys.
+func (k *RSAKey) MarshalAllData() (*SerializedKey, error) {
 	var priBytes []byte
 	if k.PrivateKey != nil {
 		pri := x509.MarshalPKCS1PrivateKey(k.PrivateKey)
@@ -98,8 +103,8 @@ func (k *RSAKey) Verify(msg, sig []byte) error {
 	return nil
 }
 
-// UnmarshalRSAKey is a helper function to unmarshal an RSA key from a data.Key.
-func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
+// UnmarshalRSAKey is a helper function to unmarshal an RSA key from a data.SerializedKey.
+func UnmarshalRSAKey(key *SerializedKey) (*RSAKey, error) {
 	var kv rawKey
 	if err := json.Unmarshal(key.Value, &kv); err != nil {
 		return nil, err
@@ -112,10 +117,7 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 	if err != nil {
 		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to unmarshal public key: ", err)
 	}
-	rsaKey := RSAKey{
-		PublicKey: publicKey.(*rsa.PublicKey),
-		keyType:   data.KeyTypeRSA,
-	}
+	rsaKey := NewRSAKey(publicKey.(*rsa.PublicKey), nil)
 
 	block, _ = pem.Decode(kv.Private)
 	if block != nil {
@@ -126,10 +128,10 @@ func UnmarshalRSAKey(key *data.Key) (*RSAKey, error) {
 		rsaKey.PrivateKey = privateKey
 	}
 
-	if err := VerifyRSAKey(&rsaKey); err != nil {
+	if err := VerifyRSAKey(rsaKey); err != nil {
 		return nil, err
 	}
-	return &rsaKey, nil
+	return rsaKey, nil
 }
 
 // VerifyRSAKey is a helper function to verify a rsa key.
@@ -140,7 +142,7 @@ func VerifyRSAKey(v *RSAKey) error {
 	return nil
 }
 
-func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
+func (k *RSAKey) marshalKey(kv rawKey) (*SerializedKey, error) {
 	pub, err := x509.MarshalPKIXPublicKey(k.PublicKey)
 	if err != nil {
 		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to marshal public key: ", err)
@@ -156,7 +158,7 @@ func (k *RSAKey) marshalKey(kv rawKey) (*data.Key, error) {
 		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to marshal key: ", err)
 	}
 
-	return &data.Key{
+	return &SerializedKey{
 		Type:  k.keyType,
 		Value: valueBytes,
 	}, nil
