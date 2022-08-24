@@ -23,8 +23,6 @@ type ecdsaSignature struct {
 // ECDSAKey is a verifier for ecdsa keys
 type ECDSAKey struct {
 	Key
-	Verifier
-	Signer
 	PublicKey  *ecdsa.PublicKey
 	PrivateKey *ecdsa.PrivateKey
 	keyType    KeyType

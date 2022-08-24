@@ -19,8 +19,6 @@ import (
 // RSAKey is
 type RSAKey struct {
 	Key
-	Verifier
-	Signer
 	PublicKey  *rsa.PublicKey
 	PrivateKey *rsa.PrivateKey
 	keyType    KeyType

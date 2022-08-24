@@ -26,7 +26,7 @@ func NewKeyRepositoryService(l logger.Logger, db db.KeyRepository) *KeyRepositor
 }
 
 // CreateNewKey creates new repository key
-func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repoID data.RepoID, role data.RoleType, keyType data.KeyType) (data.KeyID, error) {
+func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repoID data.RepoID, role data.RoleType, keyType encryption.KeyType) (data.KeyID, error) {
 	key, err := encryption.NewKey(keyType)
 	if err != nil {
 		return "", err
@@ -38,7 +38,7 @@ func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repoID data.R
 	keyObj := data.RepoKey{
 		RepoID: repoID,
 		Role:   role,
-		KeyID:  encryption.NewKeyID(key),
+		KeyID:  data.NewKeyID(key),
 		Key:    *keySerialized,
 	}
 	err = svc.db.Create(ctx, keyObj)
@@ -49,4 +49,9 @@ func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repoID data.R
 // ExistsKeyRole checks if data.RepoKey with role exists in database
 func (svc *KeyRepositoryService) ExistsKeyRole(ctx context.Context, repoID data.RepoID, role data.RoleType) (bool, error) {
 	return svc.db.ExistsKeyRole(ctx, repoID, role)
+}
+
+// GetRepoKeys returns []data.RepoKey for provided repoID
+func (svc *KeyRepositoryService) GetRepoKeys(ctx context.Context, repoID data.RepoID) ([]data.RepoKey, error) {
+	return svc.db.FindByRepoID(ctx, repoID)
 }

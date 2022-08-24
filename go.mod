@@ -1,6 +1,6 @@
 module github.com/shuvava/ota-tuf-server
 
-go 1.18
+go 1.19
 
 require (
 	github.com/fsnotify/fsnotify v1.5.1

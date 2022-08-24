@@ -8,6 +8,7 @@ import (
 
 	"github.com/shuvava/ota-tuf-server/internal/db"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 // RepositoryService is the service responsible for managing the repository
@@ -28,7 +29,7 @@ func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, db db.T
 }
 
 // Create initializes new repository by creating and persisting new key pair for data.TopLevelRoles
-func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, repoID data.RepoID, keyType data.KeyType) error {
+func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, repoID data.RepoID, keyType encryption.KeyType) error {
 	//log := svc.log.SetOperation("Create").WithContext(ctx)
 	repo := data.Repo{
 		Namespace: ns,

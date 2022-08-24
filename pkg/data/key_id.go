@@ -5,6 +5,8 @@ import (
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/go-ota-svc-common/data"
+
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 // KeyID is a type of TUF server key id
@@ -36,4 +38,10 @@ func KeyIDFromString(s string) (KeyID, error) {
 		return "", err
 	}
 	return keyID, nil
+}
+
+// NewKeyID creates a new KeyID
+func NewKeyID(key encryption.BaseKey) KeyID {
+	keyID := KeyID(key.FingerprintSHA256())
+	return keyID
 }

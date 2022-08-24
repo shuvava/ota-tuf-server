@@ -12,10 +12,10 @@ CYAN   := $(shell tput -Txterm setaf 6)
 RESET  := $(shell tput -Txterm sgr0)
 
 # The binaries to build (just the basenames)
-BINS := logger-test
+BINS := tuf-key-repo
 # The platforms we support.
 ALL_PLATFORMS := linux/amd64
-BUILD_IMAGE ?= golang:1.17-alpine
+BUILD_IMAGE ?= golang:1.19-alpine
 # Used internally.  Users should pass GOOS and/or GOARCH.
 OS := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))

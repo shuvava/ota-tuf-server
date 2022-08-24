@@ -14,10 +14,9 @@ type SerializedKey struct {
 	Value json.RawMessage `json:"keyval"`
 }
 
-// UnmarshalPublicKey takes key data to a working verifier implementation for the key type.
-// This performs any validation over the data.PublicKey to ensure that the verifier is usable
-// to verify signatures.
-func (key *SerializedKey) UnmarshalPublicKey() (Verifier, error) {
+// UnmarshalKey takes key data and convert it to valid Key type
+// Node if SerializedKey includes only PublicKey only Verify interface will work
+func (key *SerializedKey) UnmarshalKey() (Key, error) {
 	switch key.Type {
 	case KeyTypeEd25519:
 		return UnmarshalEd25519Key(key)

@@ -18,8 +18,6 @@ import (
 // Ed25519Key is a verifier for ed25519 keys
 type Ed25519Key struct {
 	Key
-	Verifier
-	Signer
 	ed25519.PrivateKey
 	PublicKey ed25519.PublicKey
 	keyType   KeyType

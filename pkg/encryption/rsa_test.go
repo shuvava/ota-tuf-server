@@ -2,8 +2,9 @@ package encryption_test
 
 import (
 	"encoding/json"
-	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 	"testing"
+
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 func TestRSAMarshaling(t *testing.T) {

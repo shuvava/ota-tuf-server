@@ -10,10 +10,11 @@ import (
 
 	cmnapi "github.com/shuvava/go-ota-svc-common/api"
 	"github.com/shuvava/go-ota-svc-common/apperrors"
-	"github.com/shuvava/ota-tuf-server/internal/db/mongo"
 
+	"github.com/shuvava/ota-tuf-server/internal/db/mongo"
 	tufapi "github.com/shuvava/ota-tuf-server/pkg/api"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 	"github.com/shuvava/ota-tuf-server/pkg/services"
 )
 
@@ -31,8 +32,8 @@ const (
 
 type (
 	rootGenRequest struct {
-		Threshold int          `json:"threshold,omitempty"`
-		KeyType   data.KeyType `json:"keyType,omitempty"`
+		Threshold int                `json:"threshold,omitempty"`
+		KeyType   encryption.KeyType `json:"keyType,omitempty"`
 	}
 )
 
@@ -46,7 +47,7 @@ func CreateRoot(ctx echo.Context, svc *services.RepositoryService) error {
 	}
 	genReq := &rootGenRequest{
 		Threshold: 1,
-		KeyType:   data.KeyTypeRSA,
+		KeyType:   encryption.KeyTypeRSA,
 	}
 	if err = ctx.Bind(genReq); err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
@@ -89,6 +90,7 @@ func getRepoID(ctx echo.Context) (data.RepoID, error) {
 	repoID := ctx.Param(pathRepoID)
 	if repoID == "" {
 		if strings.HasSuffix(ctx.Path(), PathRepoServerRepoWithNameSpaceResolver) {
+			// TODO: make repoID generation consistent (UUIDv5 (namespace_name)
 			return data.NewRepoID(), nil
 		}
 		return data.RepoIDNil, apperrors.NewAppError(apperrors.ErrorGeneric, "parameter repoID is missing")

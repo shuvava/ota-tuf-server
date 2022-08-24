@@ -17,6 +17,7 @@ import (
 
 	"github.com/shuvava/ota-tuf-server/internal/db"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 )
 
 const keyRepoTableName = "tuf_keys"
@@ -61,14 +62,14 @@ func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKe
 	log.WithField("RepoID", obj.RepoID).
 		WithField("KeyID", obj.KeyID).
 		WithField("Role", obj.Role).
-		Debug("Creating new Key")
+		Debug("Creating new SerializedKey")
 
 	exists, err := store.Exists(ctx, obj.RepoID, obj.KeyID)
 	if err != nil {
 		return err
 	}
 	if exists {
-		err = fmt.Errorf("document(Key) with id='%s' role='%s' already exist in database", obj.KeyID, obj.Role)
+		err = fmt.Errorf("document(SerializedKey) with id='%s' role='%s' already exist in database", obj.KeyID, obj.Role)
 		return apperrors.CreateErrorAndLogIt(log,
 			ErrorRepoKeyErrorDbAlreadyExist,
 			"Failed to add new DB record", err)
@@ -79,12 +80,12 @@ func (store *RepoKeyMongoRepository) Create(ctx context.Context, obj data.RepoKe
 		log.WithField("RepoID", obj.RepoID).
 			WithField("KeyID", obj.KeyID).
 			WithField("Role", obj.Role).
-			Info("Key created successful")
+			Info("SerializedKey created successful")
 	} else {
 		log.WithField("RepoID", obj.RepoID).
 			WithField("KeyID", obj.KeyID).
 			WithField("Role", obj.Role).
-			Warn("Key creation failed")
+			Warn("SerializedKey creation failed")
 	}
 	return err
 }
@@ -215,8 +216,8 @@ func toRepoKeyModel(dto repoKeyDTO) (data.RepoKey, error) {
 		RepoID: repoID,
 		Role:   data.RoleType(dto.Role),
 		KeyID:  keyID,
-		Key: data.Key{
-			Type:  data.KeyType(dto.Key.Type),
+		Key: encryption.SerializedKey{
+			Type:  encryption.KeyType(dto.Key.Type),
 			Value: dto.Key.Value,
 		},
 	}, nil
