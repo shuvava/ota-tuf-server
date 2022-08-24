@@ -59,7 +59,7 @@ func (svc *SignedContentService) getCurrent(ctx context.Context, repoID data.Rep
 	if err != nil {
 		return nil, err
 	}
-	if currentVer < 1 {
+	if currentVer <= firstVersionNumber {
 		return nil, apperrors.NewAppError(ErrorMissingSignedRole, "no active version found")
 	}
 	return svc.db.FindVersion(ctx, repoID, currentVer)

@@ -21,11 +21,11 @@ import (
 const signedRepoTableName = "tuf_signed"
 
 type repoSignedContentDTO struct {
-	ID        primitive.ObjectID                `bson:"_id,omitempty"`
-	RepoID    string                            `bson:"repo_id"`
-	ExpiresAt time.Time                         `bson:"expires_at"`
-	Version   int                               `bson:"version"`
-	Content   data.SignedPayload[data.RootRole] `bson:"signed_payload"`
+	ID        primitive.ObjectID                 `bson:"_id,omitempty"`
+	RepoID    string                             `bson:"repo_id"`
+	ExpiresAt time.Time                          `bson:"expires_at"`
+	Version   uint                               `bson:"version"`
+	Content   *data.SignedPayload[data.RootRole] `bson:"signed_payload"`
 }
 
 // SignedContentMongoRepository implementation of db.TufSignedContent for MongoDb repo
@@ -80,7 +80,7 @@ func (store *SignedContentMongoRepository) Create(ctx context.Context, obj *data
 }
 
 // Exists checks if data.SignedRootRole exists in database
-func (store *SignedContentMongoRepository) Exists(ctx context.Context, repoID data.RepoID, ver int) (bool, error) {
+func (store *SignedContentMongoRepository) Exists(ctx context.Context, repoID data.RepoID, ver uint) (bool, error) {
 	log := store.log.WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("RepoID", repoID).
@@ -95,7 +95,7 @@ func (store *SignedContentMongoRepository) Exists(ctx context.Context, repoID da
 }
 
 // FindVersion returns data.SignedRootRole with Version equal to ver parameter
-func (store *SignedContentMongoRepository) FindVersion(ctx context.Context, repoID data.RepoID, ver int) (*data.SignedRootRole, error) {
+func (store *SignedContentMongoRepository) FindVersion(ctx context.Context, repoID data.RepoID, ver uint) (*data.SignedRootRole, error) {
 	log := store.log.WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("RepoID", repoID).
@@ -120,7 +120,7 @@ func (store *SignedContentMongoRepository) FindVersion(ctx context.Context, repo
 }
 
 // GetMaxVersion returns current repo version
-func (store *SignedContentMongoRepository) GetMaxVersion(ctx context.Context, repoID data.RepoID) (int, error) {
+func (store *SignedContentMongoRepository) GetMaxVersion(ctx context.Context, repoID data.RepoID) (uint, error) {
 	log := store.log.WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("RepoID", repoID).
@@ -140,16 +140,16 @@ func (store *SignedContentMongoRepository) GetMaxVersion(ctx context.Context, re
 	pipeline = append(pipeline, matchStage, groupStage)
 	var res []intMongo.DBResult
 	if err := store.db.Aggregate(ctx, store.coll, pipeline, nil, &res); err != nil {
-		return -1, err
+		return 0, err
 	}
 	if len(res) < 1 {
 		return 0, apperrors.NewAppError(apperrors.ErrorDbOperation, "unexpected aggregation result")
 	}
 
-	return int(res[0]["maxVersion"].(int32)), nil
+	return uint(res[0]["maxVersion"].(uint32)), nil
 }
 
-func getOneSignedContentFilter(repoID data.RepoID, ver int) bson.D {
+func getOneSignedContentFilter(repoID data.RepoID, ver uint) bson.D {
 	return bson.D{primitive.E{
 		Key: "$and",
 		Value: bson.A{

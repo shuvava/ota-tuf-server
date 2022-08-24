@@ -31,8 +31,8 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		obj := &data.SignedRootRole{
 			RepoID:  repoID,
 			Version: 1,
-			Content: data.SignedPayload[data.RootRole]{
-				Signature: sig,
+			Content: &data.SignedPayload[data.RootRole]{
+				Signatures: []*data.ClientSignature{sig},
 			},
 			ExpiresAt: time.Now().Add(time.Hour * 3),
 		}
@@ -50,8 +50,8 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		obj := &data.SignedRootRole{
 			RepoID:  repoID,
 			Version: 2,
-			Content: data.SignedPayload[data.RootRole]{
-				Signature: sig,
+			Content: &data.SignedPayload[data.RootRole]{
+				Signatures: []*data.ClientSignature{sig},
 			},
 			ExpiresAt: time.Now().Add(time.Hour * 3),
 		}
@@ -62,7 +62,8 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		if err != nil {
 			t.Errorf("got %s, expected nil", err)
 		}
-		if len(obj2.Content.Signature.Value) != len(obj.Content.Signature.Value) {
+		if len(obj2.Content.Signatures) != len(obj.Content.Signatures) ||
+			len(obj2.Content.Signatures[0].Value) != len(obj.Content.Signatures[0].Value) {
 			t.Errorf("content does not match")
 		}
 	})
@@ -70,7 +71,7 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		obj := &data.SignedRootRole{
 			RepoID:    repoID,
 			Version:   100,
-			Content:   data.SignedPayload[data.RootRole]{},
+			Content:   &data.SignedPayload[data.RootRole]{},
 			ExpiresAt: time.Now().Add(time.Hour * 3),
 		}
 		if err = svc.Create(ctx, obj); err != nil {
