@@ -60,6 +60,9 @@ func initRepoRoutes(s *Server, group *echo.Group) {
 	group.GET(api.PathRepoServerRepos, func(c echo.Context) error {
 		return api.ListRepos(c, s.svc.RepoSvc)
 	})
+	group.GET(api.PathRepoServerRepo, func(c echo.Context) error {
+		return api.GetRepoSignedContent(c, s.svc.SignedContentSvc)
+	})
 }
 
 func initHealthRoutes(s *Server, e *echo.Echo) {

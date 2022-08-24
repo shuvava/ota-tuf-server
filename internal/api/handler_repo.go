@@ -86,6 +86,17 @@ func ListRepos(ctx echo.Context, svc *services.RepositoryService) error {
 	return ctx.JSON(http.StatusOK, m)
 }
 
+// GetRepoSignedContent returns current repo signed metadata
+func GetRepoSignedContent(ctx echo.Context, svc *services.SignedContentService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	repoID, err := getRepoID(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	res, err := svc.GetRepoSignedMeta(c, repoID)
+	return ctx.JSON(http.StatusOK, res)
+}
+
 func getRepoID(ctx echo.Context) (data.RepoID, error) {
 	repoID := ctx.Param(pathRepoID)
 	if repoID == "" {
