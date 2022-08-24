@@ -1,7 +1,6 @@
 package data
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
@@ -40,15 +39,8 @@ const (
 )
 
 // NewClientSignature signs data by the key
-func NewClientSignature(key encryption.Signer, data interface{}) (*ClientSignature, error) {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return nil, apperrors.NewAppError(
-			ErrorSignatureSerialization,
-			err.Error(),
-		)
-	}
-	sig, err := key.SignMessage(b)
+func NewClientSignature(key encryption.Signer, data []byte) (*ClientSignature, error) {
+	sig, err := key.SignMessage(data)
 	if err != nil {
 		return nil, err
 	}

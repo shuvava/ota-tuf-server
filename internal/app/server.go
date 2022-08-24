@@ -26,12 +26,13 @@ type Server struct {
 	config *config.AppConfig
 	mu     sync.Mutex
 	svc    struct {
-		Db            intCmnDb.BaseRepository
-		KeyRepo       db.KeyRepository
-		Repo          db.TufRepoRepository
-		SignedContent db.TufSignedContent
-		RepoSvc       *services.RepositoryService
-		KeyRepoSvc    *services.KeyRepositoryService
+		Db               intCmnDb.BaseRepository
+		KeyRepo          db.KeyRepository
+		Repo             db.TufRepoRepository
+		SignedContent    db.TufSignedContent
+		RepoSvc          *services.RepositoryService
+		KeyRepoSvc       *services.KeyRepositoryService
+		SignedContentSvc *services.SignedContentService
 	}
 }
 

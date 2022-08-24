@@ -1,6 +1,8 @@
 package data
 
 import (
+	"encoding/json"
+	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"time"
 
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
@@ -33,7 +35,7 @@ type RootRole struct {
 }
 
 // NewRootRole creates a new RootRole
-func NewRootRole(keys map[KeyID]*encryption.SerializedKey, roles map[RoleType][]KeyID, expires time.Time) *RootRole {
+func NewRootRole(keys map[KeyID]*encryption.SerializedKey, roles map[RoleType][]KeyID, version uint, expires time.Time) *RootRole {
 	roleKeys := make(map[RoleType]RoleKeys)
 	for k, v := range roles {
 		roleKeys[k] = RoleKeys{
@@ -46,7 +48,7 @@ func NewRootRole(keys map[KeyID]*encryption.SerializedKey, roles map[RoleType][]
 		KeyRoles:           roleKeys,
 		ConsistentSnapshot: false,
 	}
-	role.Version = 1
+	role.Version = version
 	role.ExpiresAt = expires
 	role.RoleType = RoleTypeRoot
 	return role
@@ -61,13 +63,30 @@ func (rr *RootRole) GetRoleKeys(rtype RoleType) []KeyID {
 }
 
 // Sign create SignedPayload for the RootRole
-func (rr *RootRole) Sign(key encryption.Signer) (*SignedPayload[RootRole], error) {
-	sig, err := NewClientSignature(key, rr)
+func (rr *RootRole) Sign(keys []RepoKey) (*SignedPayload[RootRole], error) {
+	b, err := json.Marshal(rr)
 	if err != nil {
-		return nil, err
+		return nil, apperrors.NewAppError(
+			ErrorSignatureSerialization,
+			err.Error(),
+		)
 	}
+	signatures := make([]*ClientSignature, 0)
+	for _, key := range keys {
+		s, err := key.ToSinger()
+		if err != nil {
+			return nil, err
+		}
+		sig, err := NewClientSignature(s, b)
+		if err != nil {
+			return nil, err
+		}
+		signatures = append(signatures, sig)
+	}
+
 	return &SignedPayload[RootRole]{
-		Signature: sig,
-		Signed:    rr,
+		Signatures: signatures,
+		Signed:     rr,
+		Value:      string(b),
 	}, nil
 }

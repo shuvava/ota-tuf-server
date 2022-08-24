@@ -22,3 +22,11 @@ func (rk RepoKey) ToPublicKey() (*encryption.SerializedKey, error) {
 	}
 	return key.MarshalPublicData()
 }
+
+func (rk RepoKey) ToSinger() (encryption.Signer, error) {
+	key, err := rk.Key.UnmarshalKey()
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
