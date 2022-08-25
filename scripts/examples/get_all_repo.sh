@@ -69,8 +69,10 @@ parse_params() {
 
 parse_response() {
   local response=${1}
-  local http_code=$(tail -n1 <<< "$response")  # get the last line
-  local content=$(sed '1d;$d' <<< "$response")   # get all except the first and last lines
+  local http_code
+  http_code=$(tail -n1 <<< "$response")  # get the last line
+  local content
+  content=$(sed '$d' <<< "$response")   # get all except the first and last lines
   local head=true
   local header=""
   local response_body=""
@@ -103,7 +105,7 @@ URL="${TUF_REPO_URL}/api/v1/repos?offset=${OFFSET}&limit=${LIMIT}"
 msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
 msg "${GREEN}URL      :${NOFORMAT} ${URL}"
 
-response=$(curl -s -w "%{http_code}" \
+response=$(curl -si -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -H "X-Request-ID: ${REQUEST_ID}" \
   "${URL}")

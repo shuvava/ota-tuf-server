@@ -4,5 +4,4 @@ package data
 type SignedPayload[T RootRole] struct {
 	Signatures []*ClientSignature `json:"signatures"`
 	Signed     *T                 `json:"signed"`
-	Value      string             `json:"json"`
 }

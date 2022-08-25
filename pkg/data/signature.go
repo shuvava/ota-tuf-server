@@ -1,6 +1,7 @@
 package data
 
 import (
+	"encoding/base64"
 	"fmt"
 
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
@@ -49,7 +50,7 @@ func NewClientSignature(key encryption.Signer, data []byte) (*ClientSignature, e
 		KeyID: NewKeyID(key),
 	}
 	signature.Method = key.Type()
-	signature.Value = string(sig)
+	signature.Value = base64.StdEncoding.EncodeToString(sig)
 	return signature, nil
 }
 

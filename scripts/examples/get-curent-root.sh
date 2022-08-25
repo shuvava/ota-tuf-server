@@ -109,13 +109,11 @@ fi
 msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
 msg "${GREEN}URL      :${NOFORMAT} ${URL}"
 
-body="{\"keyType\":\"ed25519\"}"
 response=$(curl -si -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -H "x-ats-namespace: ${NAMESPACE}" \
   -H "X-Request-ID: ${REQUEST_ID}" \
-  -X "POST" \
-  --data "${body}" \
+  -X "GET" \
   "${URL}")
 
 parse_response "${response}"

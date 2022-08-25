@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/shuvava/go-logging/logger"
 	cmndata "github.com/shuvava/go-ota-svc-common/data"
@@ -13,24 +14,30 @@ import (
 
 // RepositoryService is the service responsible for managing the repository
 type RepositoryService struct {
-	log    logger.Logger
-	db     db.TufRepoRepository
-	keySvc *KeyRepositoryService
+	log          logger.Logger
+	db           db.TufRepoRepository
+	keySvc       *KeyRepositoryService
+	signedCtnSvc *SignedContentService
 }
 
 // NewRepositoryService creates new instance of services.RepositoryService
-func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, db db.TufRepoRepository) *RepositoryService {
+func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, signedCtnSvc *SignedContentService, db db.TufRepoRepository) *RepositoryService {
 	log := l.SetArea("repository-service")
 	return &RepositoryService{
-		log:    log,
-		db:     db,
-		keySvc: keySvc,
+		log:          log,
+		db:           db,
+		keySvc:       keySvc,
+		signedCtnSvc: signedCtnSvc,
 	}
 }
 
 // Create initializes new repository by creating and persisting new key pair for data.TopLevelRoles
 func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, repoID data.RepoID, keyType encryption.KeyType) error {
-	//log := svc.log.SetOperation("Create").WithContext(ctx)
+	log := svc.log.SetOperation("Create").WithContext(ctx)
+	defer log.TrackFuncTime(time.Now())
+	log.WithField("Namespace", ns).
+		WithField("RepoID", repoID).
+		Debug("Creating new TUF repository")
 	repo := data.Repo{
 		Namespace: ns,
 		RepoID:    repoID,
@@ -45,7 +52,7 @@ func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, 
 		}
 	}
 
-	return nil
+	return svc.signedCtnSvc.CreateNewRepoSignedMeta(ctx, repoID)
 }
 
 // List returns all data.Repo

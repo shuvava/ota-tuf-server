@@ -19,13 +19,16 @@ import (
 )
 
 const (
-	pathRepoID = "repoID"
+	pathRepoID  = "repoID"
+	pathVersion = "version"
 	//PathRepoServerRepoWithNameSpaceResolver is the path to create / modify a key repository with resolving repositoryID from namespace
 	PathRepoServerRepoWithNameSpaceResolver = "/user_repo"
 	//PathRepoServerRepo is the path to create/ modify a key repository
 	PathRepoServerRepo = "/repo/:" + pathRepoID
 	//PathKeyServerRepo is the path to create a new key repository
 	PathKeyServerRepo = "/root/:" + pathRepoID
+	//PathKeyServerRepoWithVersion is the path to create a new key repository
+	PathKeyServerRepoWithVersion = PathKeyServerRepo + "/:" + pathVersion
 	// PathRepoServerRepos is repo-server path returns list of repositories
 	PathRepoServerRepos = "/repos"
 )

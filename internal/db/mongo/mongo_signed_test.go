@@ -85,4 +85,14 @@ func TestSignedContentMongoRepository(t *testing.T) {
 			t.Errorf("Incorrect next version: %d should be %d", ver, obj.Version)
 		}
 	})
+	t.Run("should return error if repo does not exist", func(t *testing.T) {
+		r := data.NewRepoID()
+		ver, err := svc.GetMaxVersion(ctx, r)
+		if err == nil {
+			t.Errorf("got %s, expected nil", err)
+		}
+		if ver != 0 {
+			t.Errorf("Incorrect next version: %d should be %d", ver, 0)
+		}
+	})
 }

@@ -35,6 +35,19 @@ func NewSignedContentService(l logger.Logger, keySvc *KeyRepositoryService, db d
 	}
 }
 
+// CreateNewRepoSignedMeta creates the first data.SignedRootRole for the data.RepoID
+func (svc *SignedContentService) CreateNewRepoSignedMeta(ctx context.Context, repoID data.RepoID) error {
+	b, err := svc.db.Exists(ctx, repoID, firstVersionNumber)
+	if err != nil {
+		return err
+	}
+	if b {
+		return apperrors.NewAppError(ErrorVersionAlreadyExist, fmt.Sprintf("repo with ID %s and version %d already exist", repoID, firstVersionNumber))
+	}
+	_, err = svc.createAndPersist(ctx, repoID, firstVersionNumber)
+	return err
+}
+
 func (svc *SignedContentService) GetRepoSignedMeta(ctx context.Context, repoID data.RepoID) (*data.SignedPayload[data.RootRole], error) {
 	sig, err := svc.getCurrent(ctx, repoID)
 	if err != nil {
@@ -45,7 +58,7 @@ func (svc *SignedContentService) GetRepoSignedMeta(ctx context.Context, repoID d
 			return nil, err
 		}
 	}
-	if sig.ExpiresAt.Add(time.Hour).After(time.Now().UTC()) {
+	if sig.ExpiresAt.Before(time.Now().Add(time.Hour).UTC()) {
 		return svc.createAndPersist(ctx, repoID, sig.Version)
 	}
 

@@ -2,10 +2,11 @@ package data
 
 import (
 	"encoding/json"
-	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"time"
 
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
+
+	"github.com/shuvava/go-ota-svc-common/apperrors"
 )
 
 // RoleKeys is sorted list of key associated with RoleType
@@ -87,6 +88,5 @@ func (rr *RootRole) Sign(keys []RepoKey) (*SignedPayload[RootRole], error) {
 	return &SignedPayload[RootRole]{
 		Signatures: signatures,
 		Signed:     rr,
-		Value:      string(b),
 	}, nil
 }

@@ -146,7 +146,7 @@ func (store *SignedContentMongoRepository) GetMaxVersion(ctx context.Context, re
 		return 0, apperrors.NewAppError(apperrors.ErrorDbOperation, "unexpected aggregation result")
 	}
 
-	return uint(res[0]["maxVersion"].(uint32)), nil
+	return uint(res[0]["maxVersion"].(int64)), nil
 }
 
 func getOneSignedContentFilter(repoID data.RepoID, ver uint) bson.D {
