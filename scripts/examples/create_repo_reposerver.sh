@@ -4,6 +4,8 @@ set -Eeuo pipefail
 DEFAULT_TUF_REPO_URL=${DEFAULT_TUF_REPO_URL:-"http://localhost:8080"}
 DEFAULT_NAMESPACE=${DEFAULT_NAMESPACE:-"default"}
 REQUEST_ID=${REQUEST_ID:-$(uuidgen | tr "[:upper:]" "[:lower:]")}
+ALLOWED_KEY_TYPES=("rsa" "ed25519" "ecdsa")
+DEFAULT_KEY_TYPE="rsa"
 
 usage() {
   cat <<EOF
@@ -18,6 +20,7 @@ Available options:
 -s, --server    TUF server bse URI (by default ${DEFAULT_TUF_REPO_URL})
 -n, --namespace TUF repo namespace (by default ${DEFAULT_NAMESPACE})
 -r, --repo      TUF repo UUID (generated in runtime by default)
+-k, --key       TUF repo key type(supported types: ${ALLOWED_KEY_TYPES[*]})
 EOF
   exit
 }
@@ -37,22 +40,27 @@ msg() {
 parse_params() {
   TUF_REPO_URL=${DEFAULT_TUF_REPO_URL}
   NAMESPACE=${DEFAULT_NAMESPACE}
+  KEY_TYPE=${DEFAULT_KEY_TYPE}
   REPO_ID=""
   while :; do
     case "${1-}" in
     -h | --help) usage ;;
     -v | --verbose) set -x ;;
     --no-color) NO_COLOR=1 ;;
-    -s | --server) # example named parameter
+    -s | --server) # TUF server base URL
       TUF_REPO_URL="${2-}"
       shift
       ;;
-    -n | --namespace) # example named parameter
+    -n | --namespace) # TUF repo namespace
       NAMESPACE="${2-}"
       shift
       ;;
-    -r | --repo) # example named parameter
+    -r | --repo) # TUF repository ID
       REPO_ID="${2-}"
+      shift
+      ;;
+    -k | --key) # TUD repository key type
+      KEY_TYPE="${2-}"
       shift
       ;;
     -?*) die "Unknown option: $1" ;;
@@ -64,6 +72,7 @@ parse_params() {
   # check required params and arguments
   [[ -z "${TUF_REPO_URL-}" ]] && die "Missing required parameter: server"
   [[ -z "${NAMESPACE-}" ]] && die "Missing required parameter: namespace"
+  [[ -z "${KEY_TYPE-}" ]] && die "Missing required parameter: key"
 
   return 0
 }
@@ -109,7 +118,7 @@ fi
 msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
 msg "${GREEN}URL      :${NOFORMAT} ${URL}"
 
-body="{\"keyType\":\"ed25519\"}"
+body="{\"keyType\":\"${KEY_TYPE}\"}"
 response=$(curl -si -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -H "x-ats-namespace: ${NAMESPACE}" \
