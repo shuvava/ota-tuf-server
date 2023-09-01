@@ -9,7 +9,7 @@ import (
 
 	cmnapi "github.com/shuvava/go-ota-svc-common/api"
 
-	"github.com/shuvava/ota-tuf-server/internal/api"
+	"github.com/shuvava/ota-tuf-server/internal/handler"
 	"github.com/shuvava/ota-tuf-server/pkg/version"
 )
 
@@ -35,6 +35,7 @@ func (s *Server) initWebServer() {
 	e.Use(cmnapi.ServerHeader(version.AppName, version.Version))
 	initHealthRoutes(s, e)
 	v1Group := e.Group(routeAPIVer1, middleware.RequestID())
+	keyServerRoutes(s, v1Group)
 	initRepoRoutes(s, v1Group)
 
 	// Enable metrics middleware
@@ -45,23 +46,29 @@ func (s *Server) initWebServer() {
 }
 
 func initRepoRoutes(s *Server, group *echo.Group) {
-	group.POST(api.PathRepoServerRepoWithNameSpaceResolver, func(c echo.Context) error {
-		return api.CreateRoot(c, s.svc.RepoSvc)
+	group.POST(handler.PathRepoServerRepoWithNameSpaceResolver, func(c echo.Context) error {
+		return handler.CreateRoot(c, s.svc.RepoSvc)
 	})
-	group.POST(api.PathRepoServerRepo, func(c echo.Context) error {
-		return api.CreateRoot(c, s.svc.RepoSvc)
+	group.POST(handler.PathRepoServerRepo, func(c echo.Context) error {
+		return handler.CreateRoot(c, s.svc.RepoSvc)
 	})
-	group.POST(api.PathKeyServerRepo, func(c echo.Context) error {
-		return api.CreateRoot(c, s.svc.RepoSvc)
+	group.GET(handler.PathRepoServerRepos, func(c echo.Context) error {
+		return handler.ListRepos(c, s.svc.RepoSvc)
 	})
-	group.PUT(api.PathKeyServerRepo, func(c echo.Context) error {
-		return api.CreateRoot(c, s.svc.RepoSvc)
+	group.GET(handler.PathRepoServerRepo, func(c echo.Context) error {
+		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
 	})
-	group.GET(api.PathRepoServerRepos, func(c echo.Context) error {
-		return api.ListRepos(c, s.svc.RepoSvc)
+	group.GET(handler.PathRepoServerRepoContentWithNameSpaceResolver, func(c echo.Context) error {
+		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
 	})
-	group.GET(api.PathRepoServerRepo, func(c echo.Context) error {
-		return api.GetRepoSignedContent(c, s.svc.SignedContentSvc)
+}
+
+func keyServerRoutes(s *Server, group *echo.Group) {
+	group.POST(handler.PathKeyServerRepo, func(c echo.Context) error {
+		return handler.CreateRoot(c, s.svc.RepoSvc)
+	})
+	group.PUT(handler.PathKeyServerRepo, func(c echo.Context) error {
+		return handler.CreateRoot(c, s.svc.RepoSvc)
 	})
 }
 

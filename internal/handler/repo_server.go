@@ -1,4 +1,4 @@
-package api
+package handler
 
 import (
 	"errors"
@@ -10,11 +10,10 @@ import (
 
 	cmnapi "github.com/shuvava/go-ota-svc-common/api"
 	"github.com/shuvava/go-ota-svc-common/apperrors"
-
-	"github.com/shuvava/ota-tuf-server/internal/db/mongo"
-	tufapi "github.com/shuvava/ota-tuf-server/pkg/api"
+	"github.com/shuvava/ota-tuf-server/pkg/api"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
+	"github.com/shuvava/ota-tuf-server/pkg/errcodes"
 	"github.com/shuvava/ota-tuf-server/pkg/services"
 )
 
@@ -25,10 +24,9 @@ const (
 	PathRepoServerRepoWithNameSpaceResolver = "/user_repo"
 	//PathRepoServerRepo is the path to create/ modify a key repository
 	PathRepoServerRepo = "/repo/:" + pathRepoID
-	//PathKeyServerRepo is the path to create a new key repository
-	PathKeyServerRepo = "/root/:" + pathRepoID
-	//PathKeyServerRepoWithVersion is the path to create a new key repository
-	PathKeyServerRepoWithVersion = PathKeyServerRepo + "/:" + pathVersion
+	//PathRepoServerRepoContentWithNameSpaceResolver is the path to get current version of TUF key repository signed content with resolving repositoryID from namespace
+	PathRepoServerRepoContentWithNameSpaceResolver = PathRepoServerRepoWithNameSpaceResolver + "/root.json"
+
 	// PathRepoServerRepos is repo-server path returns list of repositories
 	PathRepoServerRepos = "/repos"
 )
@@ -40,35 +38,15 @@ type (
 	}
 )
 
-// CreateRoot creates a new TUF key repository
-func CreateRoot(ctx echo.Context, svc *services.RepositoryService) error {
-	c := cmnapi.GetRequestContext(ctx)
-	ns := cmnapi.GetNamespace(ctx)
-	repoID, err := getRepoID(ctx)
-	if err != nil {
-		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+func (r *rootGenRequest) Validate() error {
+	if r.Threshold < 1 {
+		return apperrors.NewAppError(apperrors.ErrorDataValidation, "incorrect threshold value: ")
 	}
-	genReq := &rootGenRequest{
-		Threshold: 1,
-		KeyType:   encryption.KeyTypeRSA,
-	}
-	if err = ctx.Bind(genReq); err != nil {
-		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
-	}
-	err = svc.Create(c, ns, repoID, genReq.KeyType)
-	if err != nil {
-		var typedErr apperrors.AppError
-		if errors.As(err, &typedErr) && typedErr.ErrorCode == mongo.ErrorRepoErrorDbAlreadyExist {
-			return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
-		}
-		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
-	}
-	ctx.Response().Header().Set(tufapi.HeaderRepoID, repoID.String())
-	return ctx.NoContent(http.StatusOK)
+	return r.KeyType.Validate()
 }
 
 // ListRepos returns list of available repositories for all Namespaces
-func ListRepos(ctx echo.Context, svc *services.RepositoryService) error {
+func ListRepos(ctx echo.Context, svc *services.RepositoryService) error { //nolint:typecheck
 	c := cmnapi.GetRequestContext(ctx)
 	offset, err := getInt64Param(ctx, "offset", 0)
 	if err != nil {
@@ -82,7 +60,7 @@ func ListRepos(ctx echo.Context, svc *services.RepositoryService) error {
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}
-	m := tufapi.PaginatedResponse[data.Repo]{
+	m := api.PaginatedResponse[data.Repo]{
 		Data:  res,
 		Total: total,
 	}
@@ -90,24 +68,49 @@ func ListRepos(ctx echo.Context, svc *services.RepositoryService) error {
 }
 
 // GetRepoSignedContent returns current repo signed metadata
-func GetRepoSignedContent(ctx echo.Context, svc *services.SignedContentService) error {
+func GetRepoSignedContent(ctx echo.Context, svc *services.SignedContentService, rsvc *services.RepositoryService) error { //nolint:typecheck
 	c := cmnapi.GetRequestContext(ctx)
 	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil {
+		var typedErr apperrors.AppError
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidation {
+			// try to get repoID from the namespace
+			ns := cmnapi.GetNamespace(ctx)
+			r, e := rsvc.FindByNamespace(c, ns)
+			if e == nil {
+				repoID = r.RepoID
+				err = nil
+			}
+		}
+	}
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
 	res, err := svc.GetRepoSignedMeta(c, repoID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
 	return ctx.JSON(http.StatusOK, res)
+}
+
+func getOrGenerateRepoID(ctx echo.Context) (data.RepoID, error) {
+	repoID, err := getRepoID(ctx)
+	if err != nil {
+		if strings.HasSuffix(ctx.Path(), PathRepoServerRepoWithNameSpaceResolver) {
+			// TODO: make repoID generation consistent (UUIDv5 (namespace_name)
+			return data.NewRepoID(), nil
+		}
+		return data.RepoIDNil, err
+	}
+
+	return repoID, nil
 }
 
 func getRepoID(ctx echo.Context) (data.RepoID, error) {
 	repoID := ctx.Param(pathRepoID)
 	if repoID == "" {
-		if strings.HasSuffix(ctx.Path(), PathRepoServerRepoWithNameSpaceResolver) {
-			// TODO: make repoID generation consistent (UUIDv5 (namespace_name)
-			return data.NewRepoID(), nil
-		}
-		return data.RepoIDNil, apperrors.NewAppError(apperrors.ErrorGeneric, "parameter repoID is missing")
+		return data.RepoIDNil, apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter repoID is missing")
 	}
 	return data.RepoIDFromString(repoID)
 }

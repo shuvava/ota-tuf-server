@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+
+set -eo pipefail
+DEBUG=${DEBUG:-false}
+[[ ${DEBUG} = true ]] && set -x
 
 DEFAULT_TUF_REPO_URL=${DEFAULT_TUF_REPO_URL:-"http://localhost:8080"}
 DEFAULT_NAMESPACE=${DEFAULT_NAMESPACE:-"default"}
 REQUEST_ID=${REQUEST_ID:-$(uuidgen | tr "[:upper:]" "[:lower:]")}
-ALLOWED_KEY_TYPES=("rsa" "ed25519" "ecdsa")
-DEFAULT_KEY_TYPE="rsa"
+ALLOWED_KEY_TYPES=("RSA" "ED25519")
+DEFAULT_KEY_TYPE="RSA"
+
 
 usage() {
   cat <<EOF
@@ -37,30 +41,37 @@ msg() {
   echo >&2 -e "${1-}"
 }
 
+die() {
+  local msg=$1
+  local code=${2-1} # default exit status 1
+  msg "$msg"
+  exit "$code"
+}
+
 parse_params() {
   TUF_REPO_URL=${DEFAULT_TUF_REPO_URL}
   NAMESPACE=${DEFAULT_NAMESPACE}
   KEY_TYPE=${DEFAULT_KEY_TYPE}
-  REPO_ID=""
+  REPO_ID="$(uuidgen | tr "[:upper:]" "[:lower:]")"
   while :; do
     case "${1-}" in
     -h | --help) usage ;;
     -v | --verbose) set -x ;;
     --no-color) NO_COLOR=1 ;;
-    -s | --server) # TUF server base URL
+    -s | --server)
       TUF_REPO_URL="${2-}"
       shift
       ;;
-    -n | --namespace) # TUF repo namespace
+    -n | --namespace)
       NAMESPACE="${2-}"
       shift
       ;;
-    -r | --repo) # TUF repository ID
-      REPO_ID="${2-}"
+    -k | --key)
+      KEY_TYPE="${2-}"
       shift
       ;;
-    -k | --key) # TUD repository key type
-      KEY_TYPE="${2-}"
+    -r | --repo)
+      REPO_ID="${2-}"
       shift
       ;;
     -?*) die "Unknown option: $1" ;;
@@ -72,7 +83,9 @@ parse_params() {
   # check required params and arguments
   [[ -z "${TUF_REPO_URL-}" ]] && die "Missing required parameter: server"
   [[ -z "${NAMESPACE-}" ]] && die "Missing required parameter: namespace"
-  [[ -z "${KEY_TYPE-}" ]] && die "Missing required parameter: key"
+  [[ -z "${KEY_TYPE-}" ]] && die "Missing required parameter: key type"
+  [[ "${ALLOWED_KEY_TYPES[*]}" =~ (^|[[:space:]])"$KEY_TYPE"($|[[:space:]]) ]] || die "parameter ${YELLOW}key${NOFORMAT} has incorrect value"
+  [[ -z "${REPO_ID-}" ]] && die "Missing required parameter: repo ID"
 
   return 0
 }
@@ -80,12 +93,13 @@ parse_params() {
 parse_response() {
   local response=${1}
   local http_code
-  http_code=$(tail -n1 <<< "$response")  # get the last line
   local content
-  content=$(sed '1d;$d' <<< "$response")   # get all except the first and last lines
   local head=true
   local header=""
   local response_body=""
+  http_code=$(tail -c4 <<< "$response")  # get the last line
+  content=$(sed '1d' <<< "$response")   # get all except the first and last lines
+
   while read -r line; do
     if $head; then
       if [[ $line = $'\r' ]]; then
@@ -96,7 +110,7 @@ parse_response() {
     else
       response_body="$response_body"$'\n'"$line"
     fi
-  done < <(echo "$content")
+  done < <(echo "${content:0:${#content}-3}")
 
   if [[ "${http_code}" -ne 200 ]] ; then
     msg "${RED}HTTP response code: ${NOFORMAT}${http_code}"
@@ -110,21 +124,20 @@ parse_response() {
 parse_params "$@"
 setup_colors
 
-if [[ -z "${REPO_ID}" ]]; then
-  URL="${TUF_REPO_URL}/api/v1/user_repo"
-else
-  URL="${TUF_REPO_URL}/api/v1/repo/${REPO_ID}"
-fi
-msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
-msg "${GREEN}URL      :${NOFORMAT} ${URL}"
+URL="${TUF_REPO_URL}/api/v1/root/${REPO_ID}"
+BODY="{\"keyType\":\"${KEY_TYPE}\", \"threshold\": 2}"
+echo "${BODY}"
 
-body="{\"keyType\":\"${KEY_TYPE}\"}"
+msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
+msg "${GREEN}URL      :${NOFORMAT} ${KEY_TYPE}"
+msg "${GREEN}KEY      :${NOFORMAT} ${URL}"
+
 response=$(curl -si -w "%{http_code}" \
   -H "Content-Type: application/json" \
-  -H "x-ats-namespace: ${NAMESPACE}" \
   -H "X-Request-ID: ${REQUEST_ID}" \
+  -H "x-ats-tuf-force-sync: keys" \
+  --data "${BODY}" \
   -X "POST" \
-  --data "${body}" \
   "${URL}")
 
 parse_response "${response}"

@@ -81,7 +81,7 @@ func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj data.Repo) 
 }
 
 // FindByNamespace returns data.Repo by Namespace
-func (store *TUFRepoMongoRepository) FindByNamespace(ctx context.Context, ns cmndata.Namespace) (data.Repo, error) {
+func (store *TUFRepoMongoRepository) FindByNamespace(ctx context.Context, ns cmndata.Namespace) (*data.Repo, error) {
 	log := store.log.WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("Namespace", ns).
@@ -95,12 +95,12 @@ func (store *TUFRepoMongoRepository) FindByNamespace(ctx context.Context, ns cmn
 			log.WithField("Namespace", ns).
 				Warn("Repo not found")
 		}
-		return data.Repo{}, err
+		return nil, err
 	}
 	log.WithField("Namespace", ns).
 		Debug("Repo Found")
 	model, err := toRepoModel(dto)
-	return model, err
+	return &model, err
 }
 
 // Exists checks if data.RepoKey exists in database

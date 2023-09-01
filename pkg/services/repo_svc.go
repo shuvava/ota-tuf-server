@@ -59,3 +59,8 @@ func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, 
 func (svc *RepositoryService) List(ctx context.Context, skip, limit int64) ([]*data.Repo, int64, error) {
 	return svc.db.List(ctx, skip, limit, nil)
 }
+
+// FindByNamespace returns data.Repo assigned to the namespace or ErrorDbNoDocumentFound
+func (svc *RepositoryService) FindByNamespace(ctx context.Context, ns cmndata.Namespace) (*data.Repo, error) {
+	return svc.db.FindByNamespace(ctx, ns)
+}
