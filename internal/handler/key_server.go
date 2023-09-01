@@ -37,10 +37,11 @@ func CreateRoot(ctx echo.Context, svc *services.RepositoryService) error { //nol
 	if err = ctx.Bind(genReq); err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
-	if err := genReq.Validate(); err != nil {
+	genReq.KeyType = encryption.ToKeyType(string(genReq.KeyType))
+	if err = genReq.Validate(); err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
-	err = svc.Create(c, ns, repoID, genReq.KeyType)
+	keys, err := svc.Create(c, ns, repoID, genReq.KeyType)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && (typedErr.ErrorCode == mongo.ErrorRepoErrorDbAlreadyExist ||
@@ -50,5 +51,5 @@ func CreateRoot(ctx echo.Context, svc *services.RepositoryService) error { //nol
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}
 	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
-	return ctx.NoContent(http.StatusOK)
+	return ctx.JSON(http.StatusOK, keys)
 }

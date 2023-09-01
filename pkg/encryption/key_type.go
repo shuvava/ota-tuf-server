@@ -1,6 +1,10 @@
 package encryption
 
-import "github.com/shuvava/go-ota-svc-common/apperrors"
+import (
+	"strings"
+
+	"github.com/shuvava/go-ota-svc-common/apperrors"
+)
 
 // KeyType is a string denoting a public key signature system
 type KeyType string
@@ -11,7 +15,7 @@ const (
 	// KeyTypeECDSA is the type of ECDSA keys with SHA2 and P256.
 	KeyTypeECDSA = KeyType("ecPrime256v1")
 	// KeyTypeRSA is the type of RSA keys with RSASSA-PSS and SHA256.
-	KeyTypeRSA = KeyType("rsassa-pss-sha256")
+	KeyTypeRSA = KeyType("rsa")
 )
 
 // Validate validates if KeyType has correct value
@@ -22,4 +26,11 @@ func (k KeyType) Validate() error {
 	default:
 		return apperrors.NewAppError(apperrors.ErrorDataValidation, "unsupported key type: "+string(k))
 	}
+}
+
+// ToKeyType converts string to KeyType without validation
+func ToKeyType(s string) KeyType {
+	s = strings.ToLower(s)
+	kt := KeyType(s)
+	return kt
 }

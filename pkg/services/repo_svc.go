@@ -32,7 +32,7 @@ func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, signedC
 }
 
 // Create initializes new repository by creating and persisting new key pair for data.TopLevelRoles
-func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, repoID data.RepoID, keyType encryption.KeyType) error {
+func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, repoID data.RepoID, keyType encryption.KeyType) ([]data.KeyID, error) {
 	log := svc.log.SetOperation("Create").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("Namespace", ns).
@@ -43,16 +43,22 @@ func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, 
 		RepoID:    repoID,
 	}
 	if err := svc.db.Create(ctx, repo); err != nil {
-		return err
+		return nil, err
 	}
+	keys := make([]data.KeyID, 0)
 	for role := range data.TopLevelRoles {
-		_, err := svc.keySvc.CreateNewKey(ctx, repoID, role, keyType)
+		k, err := svc.keySvc.CreateNewKey(ctx, repoID, role, keyType)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		keys = append(keys, k)
 	}
 
-	return svc.signedCtnSvc.CreateNewRepoSignedMeta(ctx, repoID)
+	if err := svc.signedCtnSvc.CreateNewRepoSignedMeta(ctx, repoID); err != nil {
+		return nil, err
+	}
+
+	return keys, nil
 }
 
 // List returns all data.Repo
