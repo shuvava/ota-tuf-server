@@ -15,7 +15,7 @@ RESET  := $(shell tput -Txterm sgr0)
 BINS := tuf-key-repo
 # The platforms we support.
 ALL_PLATFORMS := linux/amd64
-BUILD_IMAGE ?= golang:1.19-alpine
+BUILD_IMAGE ?= golang:1.21-alpine
 # Used internally.  Users should pass GOOS and/or GOARCH.
 OS := $(if $(GOOS),$(GOOS),$(shell go env GOOS))
 ARCH := $(if $(GOARCH),$(GOARCH),$(shell go env GOARCH))
@@ -151,7 +151,7 @@ endif
 
 lint-go: ## Use golintci-lint on your project
 	$(eval OUTPUT_OPTIONS = $(shell [ "${EXPORT_RESULT}" == "true" ] && echo "--out-format checkstyle ./... | tee /dev/tty > checkstyle-report.xml" || echo "" ))
-	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.49-alpine golangci-lint run --deadline=165s $(OUTPUT_OPTIONS)
+	docker run --rm -v $(shell pwd):/app -w /app golangci/golangci-lint:v1.54.2-alpine golangci-lint run --deadline=165s $(OUTPUT_OPTIONS)
 
 ## Help:
 
