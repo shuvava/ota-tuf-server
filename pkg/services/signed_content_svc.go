@@ -48,15 +48,15 @@ func (svc *SignedContentService) CreateNewRepoSignedMeta(ctx context.Context, re
 	return err
 }
 
+// GetRepoSignedMeta returns signed payload for the repo
 func (svc *SignedContentService) GetRepoSignedMeta(ctx context.Context, repoID data.RepoID) (*data.SignedPayload[data.RootRole], error) {
 	sig, err := svc.getCurrent(ctx, repoID)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == ErrorMissingSignedRole {
 			return svc.createAndPersist(ctx, repoID, firstVersionNumber)
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 	if sig.ExpiresAt.Before(time.Now().Add(time.Hour).UTC()) {
 		return svc.createAndPersist(ctx, repoID, sig.Version)

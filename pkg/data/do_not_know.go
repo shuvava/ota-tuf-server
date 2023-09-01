@@ -1,10 +1,8 @@
 package data
 
-import "time"
-
-func validExpires(expires time.Time) bool {
-	return time.Until(expires) > 0
-}
+//func validExpires(expires time.Time) bool {
+//	return time.Until(expires) > 0
+//}
 
 /*
 type SignedPayload struct {

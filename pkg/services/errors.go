@@ -8,6 +8,7 @@ const (
 	// ErrorSvcSignedContentKeyNotFound is not found keys error
 	ErrorSvcSignedContentKeyNotFound = ErrorSvcSignedContent + ":KeyNotFound"
 	// ErrorMissingSignedRole is the error for the case when no signed key found for TuF Repo
-	ErrorMissingSignedRole   = ErrorSvcSignedContent + ":MissingSignedRole"
+	ErrorMissingSignedRole = ErrorSvcSignedContent + ":MissingSignedRole"
+	// ErrorVersionAlreadyExist ????
 	ErrorVersionAlreadyExist = ErrorSvcSignedContent + ":AlreadyExist"
 )

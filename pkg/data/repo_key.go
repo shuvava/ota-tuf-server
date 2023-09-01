@@ -23,6 +23,7 @@ func (rk RepoKey) ToPublicKey() (*encryption.SerializedKey, error) {
 	return key.MarshalPublicData()
 }
 
+// ToSinger returns generic encryption.Signer interface to the RepoKey
 func (rk RepoKey) ToSinger() (encryption.Signer, error) {
 	key, err := rk.Key.UnmarshalKey()
 	if err != nil {

@@ -1,5 +1,6 @@
 package data
 
+// OperationResult ????
 type OperationResult struct {
 	Target     TargetFilename          `json:"target"`
 	Hashes     map[HashMethod]Checksum `json:"hashes"`
@@ -8,6 +9,7 @@ type OperationResult struct {
 	ResultText string                  `json:"resultText"`
 }
 
+// IsSuccess returns true if operation successful
 func (o OperationResult) IsSuccess() bool {
 	return o.ResultCode == 0 || o.ResultCode == 1
 }
