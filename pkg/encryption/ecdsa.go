@@ -105,7 +105,7 @@ func (k *ECDSAKey) Verify(msg, sig []byte) error {
 
 // VerifyECDSAKey is a helper function to verify an ecdsa key.
 func VerifyECDSAKey(v *ECDSAKey) error {
-	if !v.PublicKey.IsOnCurve(v.PublicKey.X, v.PublicKey.Y) {
+	if _, err := v.PublicKey.ECDH(); err != nil {
 		return apperrors.NewAppError(errcodes.ErrorDataValidationECDSAKey, "tuf: ecdsa key is invalid")
 	}
 	return nil
@@ -117,7 +117,7 @@ func UnmarshalECDSAKey(key *SerializedKey) (*ECDSAKey, error) {
 	if err := json.Unmarshal(key.Value, &kv); err != nil {
 		return nil, err
 	}
-	x, y := elliptic.Unmarshal(elliptic.P256(), kv.Public)
+	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), kv.Public)
 	publicKey := ecdsa.PublicKey{
 		Curve: elliptic.P256(),
 		X:     x,
@@ -138,7 +138,7 @@ func UnmarshalECDSAKey(key *SerializedKey) (*ECDSAKey, error) {
 }
 
 func (k *ECDSAKey) marshalKey(kv rawKey) (*SerializedKey, error) {
-	kv.Public = elliptic.Marshal(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y)
+	kv.Public = elliptic.MarshalCompressed(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y)
 
 	valueBytes, err := json.Marshal(kv)
 	if err != nil {
@@ -153,6 +153,6 @@ func (k *ECDSAKey) marshalKey(kv rawKey) (*SerializedKey, error) {
 
 // FingerprintSHA256 returns the SHA256 hex fingerprint of the public key.
 func (k *ECDSAKey) FingerprintSHA256() string {
-	hash := sha256.Sum256(elliptic.Marshal(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y))
+	hash := sha256.Sum256(elliptic.MarshalCompressed(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y))
 	return strings.ToLower(hex.EncodeToString(hash[:]))
 }
