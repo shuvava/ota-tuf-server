@@ -36,7 +36,7 @@ func (s *Server) initWebServer() {
 	initHealthRoutes(s, e)
 	v1Group := e.Group(routeAPIVer1, middleware.RequestID())
 	keyServerRoutes(s, v1Group)
-	initRepoRoutes(s, v1Group)
+	//repoServerRoutes(s, v1Group)
 
 	// Enable metrics middleware
 	p := prometheus.NewPrometheus("echo", nil)
@@ -45,18 +45,12 @@ func (s *Server) initWebServer() {
 	s.Echo = e
 }
 
-func initRepoRoutes(s *Server, group *echo.Group) {
+func repoServerRoutes(s *Server, group *echo.Group) {
 	group.POST(handler.PathRepoServerRepoWithNameSpaceResolver, func(c echo.Context) error {
-		return handler.CreateRoot(c, s.svc.RepoSvc)
-	})
-	group.POST(handler.PathRepoServerRepo, func(c echo.Context) error {
 		return handler.CreateRoot(c, s.svc.RepoSvc)
 	})
 	group.GET(handler.PathRepoServerRepos, func(c echo.Context) error {
 		return handler.ListRepos(c, s.svc.RepoSvc)
-	})
-	group.GET(handler.PathRepoServerRepo, func(c echo.Context) error {
-		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
 	})
 	group.GET(handler.PathRepoServerRepoContentWithNameSpaceResolver, func(c echo.Context) error {
 		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
@@ -69,6 +63,9 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	})
 	group.PUT(handler.PathKeyServerRepo, func(c echo.Context) error {
 		return handler.CreateRoot(c, s.svc.RepoSvc)
+	})
+	group.GET(handler.PathKeyServerRepo, func(c echo.Context) error {
+		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
 	})
 }
 
