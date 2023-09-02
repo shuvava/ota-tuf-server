@@ -6,12 +6,10 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 
-	intData "github.com/shuvava/ota-tuf-server/internal/data"
 	"github.com/shuvava/ota-tuf-server/pkg/errcodes"
 )
 
@@ -49,21 +47,23 @@ func (k *Ed25519Key) Type() KeyType {
 
 // MarshalPublicData returns the data.PublicKey object associated with the verifier.
 func (k *Ed25519Key) MarshalPublicData() (*SerializedKey, error) {
-	return k.marshalKey(rawKey{})
+	return k.marshalKey(RawKey{})
 }
 
 // MarshalAllData returns the data.SerializedKey object associated with the verifier contains public and private keys.
 func (k *Ed25519Key) MarshalAllData() (*SerializedKey, error) {
-	kv := rawKey{
-		Private: intData.HexBytes(k.PrivateKey),
+	key := RawKey{}
+	if k.PrivateKey != nil {
+		pkey := encodePrivateKey(k.PrivateKey)
+		key.Private = &pkey
 	}
 
-	return k.marshalKey(kv)
+	return k.marshalKey(key)
 }
 
 // Public this is the public string used as a unique identifier for the verifier instance.
 func (k *Ed25519Key) Public() string {
-	return string(k.PublicKey)
+	return encodePublicKey(k.PublicKey)
 }
 
 // Verify takes a message and signature, all as byte slices,
@@ -87,19 +87,26 @@ func (k *Ed25519Key) SignMessage(message []byte) ([]byte, error) {
 
 // UnmarshalEd25519Key is a helper function to unmarshal an ed25519 key from a data.SerializedKey.
 func UnmarshalEd25519Key(key *SerializedKey) (*Ed25519Key, error) {
-	var kv rawKey
-	if err := json.Unmarshal(key.Value, &kv); err != nil {
-		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationEd25519Key, "failed to deserialize key: ", err)
+	kv := key.Value
+
+	pub, err := decodePublicKey(kv.Public)
+	if err != nil {
+		return nil, apperrors.NewAppError(errcodes.ErrorDataValidationEd25519Key, "Unable to decode PEM block in public key")
+	}
+	publicKey := ed25519.PublicKey(pub)
+	var privateKey ed25519.PrivateKey
+	if kv.Private != nil {
+		if pri, err := decodePrivateKey(kv.Private); err == nil {
+			privateKey = pri
+		}
 	}
 
-	privateKey := ed25519.PrivateKey(kv.Private)
-	publicKey := ed25519.PublicKey(kv.Public)
-	verifier := NewEd25519Key(publicKey, privateKey)
+	ed25519Key := NewEd25519Key(publicKey, privateKey)
 
-	if err := VerifyEd25519Key(verifier); err != nil {
+	if err = VerifyEd25519Key(ed25519Key); err != nil {
 		return nil, err
 	}
-	return verifier, nil
+	return ed25519Key, nil
 }
 
 // VerifyEd25519Key is a helper function to verify an ed25519 key.
@@ -116,17 +123,12 @@ func VerifyEd25519Key(v *Ed25519Key) error {
 	return nil
 }
 
-func (k *Ed25519Key) marshalKey(kv rawKey) (*SerializedKey, error) {
-	kv.Public = intData.HexBytes(k.PublicKey)
-
-	valueBytes, err := json.Marshal(kv)
-	if err != nil {
-		return nil, apperrors.CreateError(errcodes.ErrorDataSerializationEd25519Key, "failed to marshal key: ", err)
-	}
+func (k *Ed25519Key) marshalKey(kv RawKey) (*SerializedKey, error) {
+	kv.Public = k.Public()
 
 	return &SerializedKey{
 		Type:  k.keyType,
-		Value: valueBytes,
+		Value: kv,
 	}, nil
 }
 

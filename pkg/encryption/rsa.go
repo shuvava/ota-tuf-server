@@ -7,8 +7,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/hex"
-	"encoding/json"
-	"encoding/pem"
 	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
@@ -50,33 +48,25 @@ func (k *RSAKey) Type() KeyType {
 
 // MarshalPublicData returns the data.SerializedKey object associated with the verifier contains only public key.
 func (k *RSAKey) MarshalPublicData() (*SerializedKey, error) {
-	return k.marshalKey(rawKey{})
+	return k.marshalKey(RawKey{})
 }
 
 // MarshalAllData returns the data.SerializedKey object associated with the verifier contains public and private keys.
 func (k *RSAKey) MarshalAllData() (*SerializedKey, error) {
-	var priBytes []byte
+	key := RawKey{}
 	if k.PrivateKey != nil {
 		pri := x509.MarshalPKCS1PrivateKey(k.PrivateKey)
-		priBytes = pem.EncodeToMemory(&pem.Block{
-			Type:  "RSA PRIVATE KEY",
-			Bytes: pri,
-		})
+		pkey := encodePrivateKey(pri)
+		key.Private = &pkey
 	}
 
-	return k.marshalKey(rawKey{
-		Private: priBytes,
-	})
+	return k.marshalKey(key)
 }
 
 // Public this is the public string used as a unique identifier for the verifier instance.
 func (k *RSAKey) Public() string {
 	pub, _ := x509.MarshalPKIXPublicKey(k.PublicKey)
-	pubBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: pub,
-	})
-	return string(pubBytes)
+	return encodePublicKey(pub)
 }
 
 // SignMessage signs a message with the private key.
@@ -103,27 +93,25 @@ func (k *RSAKey) Verify(msg, sig []byte) error {
 
 // UnmarshalRSAKey is a helper function to unmarshal an RSA key from a data.SerializedKey.
 func UnmarshalRSAKey(key *SerializedKey) (*RSAKey, error) {
-	var kv rawKey
-	if err := json.Unmarshal(key.Value, &kv); err != nil {
-		return nil, err
-	}
-	block, _ := pem.Decode(kv.Public)
-	if block == nil {
+	kv := key.Value
+	pub, err := decodePublicKey(kv.Public)
+	if err != nil {
 		return nil, apperrors.NewAppError(errcodes.ErrorDataValidationRSAKey, "Unable to decode PEM block in public key")
 	}
-	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	publicKey, err := x509.ParsePKIXPublicKey(pub)
 	if err != nil {
 		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to unmarshal public key: ", err)
 	}
 	rsaKey := NewRSAKey(publicKey.(*rsa.PublicKey), nil)
 
-	block, _ = pem.Decode(kv.Private)
-	if block != nil {
-		privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-		if err != nil {
-			return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to unmarshal private key: ", err)
+	if kv.Private != nil {
+		if pri, err := decodePrivateKey(kv.Private); err == nil {
+			privateKey, err := x509.ParsePKCS1PrivateKey(pri)
+			if err != nil {
+				return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to unmarshal private key: ", err)
+			}
+			rsaKey.PrivateKey = privateKey
 		}
-		rsaKey.PrivateKey = privateKey
 	}
 
 	if err := VerifyRSAKey(rsaKey); err != nil {
@@ -140,25 +128,12 @@ func VerifyRSAKey(v *RSAKey) error {
 	return nil
 }
 
-func (k *RSAKey) marshalKey(kv rawKey) (*SerializedKey, error) {
-	pub, err := x509.MarshalPKIXPublicKey(k.PublicKey)
-	if err != nil {
-		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to marshal public key: ", err)
-	}
-	pubBytes := pem.EncodeToMemory(&pem.Block{
-		Type:  "RSA PUBLIC KEY",
-		Bytes: pub,
-	})
-	kv.Public = pubBytes
-
-	valueBytes, err := json.Marshal(kv)
-	if err != nil {
-		return nil, apperrors.CreateError(errcodes.ErrorDataValidationRSAKey, "failed to marshal key: ", err)
-	}
+func (k *RSAKey) marshalKey(kv RawKey) (*SerializedKey, error) {
+	kv.Public = k.Public()
 
 	return &SerializedKey{
 		Type:  k.keyType,
-		Value: valueBytes,
+		Value: kv,
 	}, nil
 }
 

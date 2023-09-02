@@ -57,9 +57,10 @@ func TestECDSAMarshaling(t *testing.T) {
 	})
 	t.Run("error should be thrown if bad key", func(t *testing.T) {
 		badKeyValue, _ := json.Marshal(true)
+		kv := encryption.RawKey{Public: string(badKeyValue)}
 		badKey := encryption.SerializedKey{
 			Type:  encryption.KeyTypeECDSA,
-			Value: badKeyValue,
+			Value: kv,
 		}
 		_, err := encryption.UnmarshalECDSAKey(&badKey)
 		if err == nil {

@@ -2,15 +2,7 @@ package encryption
 
 import (
 	"github.com/shuvava/go-ota-svc-common/apperrors"
-
-	intData "github.com/shuvava/ota-tuf-server/internal/data"
 )
-
-// rawKey is a raw key representation used for marshaling/unmarshaling
-type rawKey struct {
-	Public  intData.HexBytes `json:"public"`
-	Private intData.HexBytes `json:"private,omitempty"`
-}
 
 // NewKey creates a new encryption key of the given type.
 func NewKey(keyType KeyType) (Key, error) {

@@ -61,9 +61,10 @@ func TestEd25519Marshaling(t *testing.T) {
 	})
 	t.Run("error should be thrown if bad key", func(t *testing.T) {
 		badKeyValue, _ := json.Marshal(true)
+		kv := encryption.RawKey{Public: string(badKeyValue)}
 		badKey := encryption.SerializedKey{
 			Type:  encryption.KeyTypeEd25519,
-			Value: badKeyValue,
+			Value: kv,
 		}
 		_, err := encryption.UnmarshalEd25519Key(&badKey)
 		if err == nil {

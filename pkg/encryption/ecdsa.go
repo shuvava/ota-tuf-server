@@ -7,7 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/asn1"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/pem"
 	"math/big"
 	"strings"
 
@@ -54,9 +54,11 @@ func (k *ECDSAKey) Type() KeyType {
 
 // MarshalAllData returns the data.SerializedKey object associated with the verifier contains public and private keys.
 func (k *ECDSAKey) MarshalAllData() (*SerializedKey, error) {
-	key := rawKey{}
+	key := RawKey{}
 	if k.PrivateKey != nil {
-		key.Private = k.PrivateKey.D.Bytes()
+		pri := k.PrivateKey.D.Bytes()
+		pkey := encodePrivateKey(pri)
+		key.Private = &pkey
 	}
 
 	return k.marshalKey(key)
@@ -64,12 +66,17 @@ func (k *ECDSAKey) MarshalAllData() (*SerializedKey, error) {
 
 // MarshalPublicData returns the data.SerializedKey object associated with the verifier contains only public key.
 func (k *ECDSAKey) MarshalPublicData() (*SerializedKey, error) {
-	return k.marshalKey(rawKey{})
+	return k.marshalKey(RawKey{})
 }
 
 // Public this is the public string used as a unique identifier for the verifier instance.
 func (k *ECDSAKey) Public() string {
-	return k.PublicKey.X.String() + k.PublicKey.Y.String()
+	pub := elliptic.MarshalCompressed(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y)
+	pubBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pub,
+	})
+	return string(pubBytes)
 }
 
 // SignMessage signs a message with the private key.
@@ -113,41 +120,44 @@ func VerifyECDSAKey(v *ECDSAKey) error {
 
 // UnmarshalECDSAKey is a helper function to unmarshal an ecdsa key from a data.SerializedKey.
 func UnmarshalECDSAKey(key *SerializedKey) (*ECDSAKey, error) {
-	var kv rawKey
-	if err := json.Unmarshal(key.Value, &kv); err != nil {
-		return nil, err
+	kv := key.Value
+	pub, err := decodePublicKey(kv.Public)
+	if err != nil {
+		return nil, apperrors.NewAppError(errcodes.ErrorDataValidationECDSAKey, "Unable to decode PEM block in public key")
 	}
-	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), kv.Public)
+	x, y := elliptic.UnmarshalCompressed(elliptic.P256(), pub)
+	if x == nil || y == nil {
+		return nil, apperrors.NewAppError(errcodes.ErrorDataSerializationECDSAKey, "error on unmarshalling key")
+	}
 	publicKey := ecdsa.PublicKey{
 		Curve: elliptic.P256(),
 		X:     x,
 		Y:     y,
 	}
 	ecdsaKey := NewECDSAKey(&publicKey, nil)
-	if len(kv.Private) > 0 {
-		privateKey := ecdsa.PrivateKey{
-			PublicKey: publicKey,
-			D:         new(big.Int).SetBytes(kv.Private),
+	if kv.Private != nil {
+		if pri, err := decodePrivateKey(kv.Private); err == nil {
+			privateKey := ecdsa.PrivateKey{
+				PublicKey: publicKey,
+				D:         new(big.Int).SetBytes(pri),
+			}
+			ecdsaKey.PrivateKey = &privateKey
 		}
-		ecdsaKey.PrivateKey = &privateKey
+
 	}
+
 	if err := VerifyECDSAKey(ecdsaKey); err != nil {
 		return nil, err
 	}
 	return ecdsaKey, nil
 }
 
-func (k *ECDSAKey) marshalKey(kv rawKey) (*SerializedKey, error) {
-	kv.Public = elliptic.MarshalCompressed(k.PublicKey.Curve, k.PublicKey.X, k.PublicKey.Y)
-
-	valueBytes, err := json.Marshal(kv)
-	if err != nil {
-		return nil, apperrors.CreateError(apperrors.ErrorDataValidation, "failed to marshal key: ", err)
-	}
+func (k *ECDSAKey) marshalKey(kv RawKey) (*SerializedKey, error) {
+	kv.Public = k.Public()
 
 	return &SerializedKey{
 		Type:  k.keyType,
-		Value: valueBytes,
+		Value: kv,
 	}, nil
 }
 
