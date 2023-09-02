@@ -46,6 +46,11 @@ func (k *RSAKey) Type() KeyType {
 	return k.keyType
 }
 
+// Method returns the method of signature
+func (k *RSAKey) Method() KeyMethod {
+	return KeyMethodRsaPssSha256
+}
+
 // MarshalPublicData returns the data.SerializedKey object associated with the verifier contains only public key.
 func (k *RSAKey) MarshalPublicData() (*SerializedKey, error) {
 	return k.marshalKey(RawKey{})

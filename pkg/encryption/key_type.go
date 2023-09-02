@@ -1,12 +1,13 @@
 package encryption
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 )
 
-// KeyType is a string denoting a public key signature system
+// KeyType is a string denoting a public key type
 type KeyType string
 
 const (
@@ -26,6 +27,21 @@ func (k KeyType) Validate() error {
 	default:
 		return apperrors.NewAppError(apperrors.ErrorDataValidation, "unsupported key type: "+string(k))
 	}
+}
+
+// MarshalJSON original key-server return key type in upper case
+func (k KeyType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(strings.ToUpper(string(k)))
+}
+
+// UnmarshalJSON convert string to lower case
+func (k KeyType) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	k = ToKeyType(s)
+	return nil
 }
 
 // ToKeyType converts string to KeyType without validation

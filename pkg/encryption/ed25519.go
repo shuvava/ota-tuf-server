@@ -45,6 +45,11 @@ func (k *Ed25519Key) Type() KeyType {
 	return k.keyType
 }
 
+// Method returns the method of signature
+func (k *Ed25519Key) Method() KeyMethod {
+	return KeyMethodED25519
+}
+
 // MarshalPublicData returns the data.PublicKey object associated with the verifier.
 func (k *Ed25519Key) MarshalPublicData() (*SerializedKey, error) {
 	return k.marshalKey(RawKey{})

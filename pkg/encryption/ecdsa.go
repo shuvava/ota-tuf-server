@@ -52,6 +52,11 @@ func (k *ECDSAKey) Type() KeyType {
 	return k.keyType
 }
 
+// Method returns the method of signature
+func (k *ECDSAKey) Method() KeyMethod {
+	return KeyMethodECPrime256V1
+}
+
 // MarshalAllData returns the data.SerializedKey object associated with the verifier contains public and private keys.
 func (k *ECDSAKey) MarshalAllData() (*SerializedKey, error) {
 	key := RawKey{}
