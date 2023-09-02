@@ -129,12 +129,15 @@ BODY="{\"keyType\":\"${KEY_TYPE}\", \"threshold\": 2}"
 echo "${BODY}"
 
 msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
-msg "${GREEN}URL      :${NOFORMAT} ${KEY_TYPE}"
-msg "${GREEN}KEY      :${NOFORMAT} ${URL}"
+msg "${GREEN}URL      :${NOFORMAT} ${URL}"
+msg "${GREEN}REPO_ID  :${NOFORMAT} ${REPO_ID}"
+msg "${GREEN}KEY      :${NOFORMAT} ${KEY_TYPE}"
+msg "${GREEN}Namespace:${NOFORMAT} ${NAMESPACE}"
 
 response=$(curl -si -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -H "X-Request-ID: ${REQUEST_ID}" \
+  -H "x-ats-namespace: ${NAMESPACE}" \
   -H "x-ats-tuf-force-sync: keys" \
   --data "${BODY}" \
   -X "POST" \

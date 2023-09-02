@@ -19,8 +19,8 @@ type (
 
 	// Signature is generic signature model
 	Signature struct {
-		Method encryption.KeyType `json:"method"`
-		Value  string             `json:"sig"`
+		Method encryption.KeyMethod `json:"method"`
+		Value  string               `json:"sig"`
 	}
 
 	// ClientSignature is public model with result of object signing
@@ -49,7 +49,7 @@ func NewClientSignature(key encryption.Signer, data []byte) (*ClientSignature, e
 	signature := &ClientSignature{
 		KeyID: NewKeyID(key),
 	}
-	signature.Method = key.Type()
+	signature.Method = key.Method()
 	signature.Value = base64.StdEncoding.EncodeToString(sig)
 	return signature, nil
 }

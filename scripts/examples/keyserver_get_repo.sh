@@ -4,8 +4,6 @@ set -Eeuo pipefail
 DEFAULT_TUF_REPO_URL=${DEFAULT_TUF_REPO_URL:-"http://localhost:8080"}
 DEFAULT_NAMESPACE=${DEFAULT_NAMESPACE:-"default"}
 REQUEST_ID=${REQUEST_ID:-$(uuidgen | tr "[:upper:]" "[:lower:]")}
-ALLOWED_KEY_TYPES=("RSA" "ED25519")
-DEFAULT_KEY_TYPE="RSA"
 
 
 usage() {
@@ -21,7 +19,6 @@ Available options:
 -s, --server    TUF server bse URI (by default ${DEFAULT_TUF_REPO_URL})
 -n, --namespace TUF repo namespace (by default ${DEFAULT_NAMESPACE})
 -r, --repo      TUF repo UUID (generated in runtime by default)
--k, --key       TUF repo key type(supported types: ${ALLOWED_KEY_TYPES[*]})
 EOF
   exit
 }
@@ -48,7 +45,6 @@ die() {
 parse_params() {
   TUF_REPO_URL=${DEFAULT_TUF_REPO_URL}
   NAMESPACE=${DEFAULT_NAMESPACE}
-  KEY_TYPE=${DEFAULT_KEY_TYPE}
   REPO_ID=""
   while :; do
     case "${1-}" in
@@ -61,10 +57,6 @@ parse_params() {
       ;;
     -n | --namespace)
       NAMESPACE="${2-}"
-      shift
-      ;;
-    -k | --key)
-      KEY_TYPE="${2-}"
       shift
       ;;
     -r | --repo)
@@ -80,16 +72,7 @@ parse_params() {
   # check required params and arguments
   [[ -z "${TUF_REPO_URL-}" ]] && die "Missing required parameter: server"
   [[ -z "${NAMESPACE-}" ]] && die "Missing required parameter: namespace"
-  [[ -z "${KEY_TYPE-}" ]] && die "Missing required parameter: key type"
-  [[ "${ALLOWED_KEY_TYPES[*]}" =~ (^|[[:space:]])"$KEY_TYPE"($|[[:space:]]) ]] || die "parameter ${YELLOW}key${NOFORMAT} has incorrect value"
-
-  # remap keyType values
-  # if [ "$KEY_TYPE" = "${ALLOWED_KEY_TYPES[0]}" ]; then
-  #   KEY_TYPE="rsassa-pss-sha256"
-  # fi
-  # if [ "$KEY_TYPE" = "${ALLOWED_KEY_TYPES[2]}" ]; then
-  #  KEY_TYPE="ecPrime256v1"
-  # fi
+  [[ -z "${REPO_ID-}" ]] && die "Missing required parameter: repo ID"
 
   return 0
 }
@@ -128,24 +111,15 @@ parse_response() {
 parse_params "$@"
 setup_colors
 
-if [[ -z "${REPO_ID}" ]]; then
-  URL="${TUF_REPO_URL}/api/v1/user_repo"
-else
-  URL="${TUF_REPO_URL}/api/v1/repo/${REPO_ID}"
-fi
-BODY="{\"keyType\":\"${KEY_TYPE}\", \"threshold\": 2}"
-echo "${BODY}"
+URL="${TUF_REPO_URL}/api/v1/root/${REPO_ID}"
 
 msg "${GREEN}RequestID:${NOFORMAT} ${REQUEST_ID}"
+msg "${GREEN}RepoID   :${NOFORMAT} ${REPO_ID}"
 msg "${GREEN}URL      :${NOFORMAT} ${URL}"
-msg "${GREEN}KEY      :${NOFORMAT} ${KEY_TYPE}"
 
 response=$(curl -si -w "%{http_code}" \
-  -H "Content-Type: application/json" \
   -H "X-Request-ID: ${REQUEST_ID}" \
-  -H "x-ats-namespace: ${NAMESPACE}" \
-  --data "${BODY}" \
-  -X "POST" \
+  -X "GET" \
   "${URL}")
 
 parse_response "${response}"

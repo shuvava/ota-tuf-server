@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -26,7 +25,7 @@ type keyDTO struct {
 	// Type is key type
 	Type string `json:"keytype"`
 	// Value is key value
-	Value json.RawMessage `json:"keyval"`
+	Value encryption.RawKey `json:"keyval"`
 }
 
 type repoKeyDTO struct {
