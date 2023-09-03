@@ -11,4 +11,6 @@ const (
 	LogFieldRole = "Role"
 	// LogFieldVersion logging field version
 	LogFieldVersion = "Version"
+	// LogFieldError logging field error
+	LogFieldError = "Error"
 )

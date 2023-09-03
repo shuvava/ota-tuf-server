@@ -19,11 +19,14 @@ import (
 
 // PathKeyServerRepo is the path to create a new key repository
 const (
+	pathKeyID         = "keyID"
 	pathRepoID        = "repoID"
 	pathVersion       = "version"
 	PathKeyServerRepo = "/root/:" + pathRepoID
 	//PathKeyServerRepoWithVersion is the path to create a new key repository
 	PathKeyServerRepoWithVersion = PathKeyServerRepo + "/:" + pathVersion
+	// PathKeyServerRepoWithKeyID is path to delete private key from the repo
+	PathKeyServerRepoWithKeyID = PathKeyServerRepo + "/private_keys/:" + pathKeyID
 )
 
 // CreateRoot creates a new TUF key repository
@@ -114,4 +117,23 @@ func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositorySe
 	}
 	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
 	return ctx.JSON(http.StatusOK, res)
+}
+
+// DeletePrivateKey handler  delete private key from TUF repo key
+func DeletePrivateKey(ctx echo.Context, svc *services.KeyRepositoryService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil || err != nil {
+		err = apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter repoID missing or invalid")
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	keyID, err := getKeyID(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	err = svc.DeletePrivateKey(c, repoID, keyID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	return ctx.NoContent(http.StatusNoContent)
 }

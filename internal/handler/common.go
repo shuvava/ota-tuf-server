@@ -43,3 +43,11 @@ func getVersion(ctx echo.Context) (uint, error) {
 	}
 	return uint(v), nil
 }
+
+func getKeyID(ctx echo.Context) (data.KeyID, error) {
+	k := ctx.Param(pathKeyID)
+	if k == "" {
+		return "", apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter version is missing")
+	}
+	return data.KeyID(k), nil
+}

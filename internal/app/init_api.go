@@ -70,6 +70,9 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	group.GET(handler.PathKeyServerRepoWithVersion, func(c echo.Context) error {
 		return handler.GetRepoSignedContentForVersion(c, s.svc.RepoSvc, s.svc.SignedContentSvc)
 	})
+	group.DELETE(handler.PathKeyServerRepoWithKeyID, func(c echo.Context) error {
+		return handler.DeletePrivateKey(c, s.svc.KeyRepoSvc)
+	})
 }
 
 func initHealthRoutes(s *Server, e *echo.Echo) {

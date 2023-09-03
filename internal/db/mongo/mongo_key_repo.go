@@ -189,6 +189,41 @@ func (store *RepoKeyMongoRepository) ExistsKeyRole(ctx context.Context, repoID d
 	return cnt > 0, nil
 }
 
+// DeletePrivateKey removes private key
+func (store *RepoKeyMongoRepository) DeletePrivateKey(ctx context.Context, repoID data.RepoID, keyID data.KeyID) error {
+	log := store.log.SetOperation("DeletePrivateKey").WithContext(ctx)
+	defer log.TrackFuncTime(time.Now())
+	log.WithField(intData.LogFieldRepoID, repoID).
+		WithField(intData.LogFieldKeyID, keyID).
+		Debug("Deleting private key for RepoKey")
+	filter := getOneRepoKeyFilter(repoID, keyID)
+	var dto repoKeyDTO
+	err := store.db.GetOne(ctx, store.coll, filter, &dto)
+	if err != nil {
+		var typedErr apperrors.AppError
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
+			log.WithField(intData.LogFieldRepoID, repoID).
+				WithField(intData.LogFieldKeyID, keyID).
+				Warn("RepoKey not found")
+		}
+		return err
+	}
+	dto.Key.Value.Private = nil
+	err = store.db.ReplaceOne(ctx, store.coll, filter, &dto)
+	if err != nil {
+		log.WithField(intData.LogFieldRepoID, repoID).
+			WithField(intData.LogFieldKeyID, keyID).
+			WithField(intData.LogFieldError, err.Error()).
+			Error("error on updating RepoKey")
+	} else {
+		log.WithField(intData.LogFieldRepoID, repoID).
+			WithField(intData.LogFieldKeyID, keyID).
+			Info("Private key deleted from RepoKey")
+	}
+
+	return err
+}
+
 // toRepoKeyDTO converts data.RepoKey to DTO
 func toRepoKeyDTO(obj *data.RepoKey) repoKeyDTO {
 	return repoKeyDTO{

@@ -68,3 +68,8 @@ func (svc *KeyRepositoryService) ExistsKeyRole(ctx context.Context, repoID data.
 func (svc *KeyRepositoryService) GetRepoKeys(ctx context.Context, repoID data.RepoID) ([]*data.RepoKey, error) {
 	return svc.db.FindByRepoID(ctx, repoID)
 }
+
+// DeletePrivateKey removes private key
+func (svc *KeyRepositoryService) DeletePrivateKey(ctx context.Context, repoID data.RepoID, keyID data.KeyID) error {
+	return svc.db.DeletePrivateKey(ctx, repoID, keyID)
+}

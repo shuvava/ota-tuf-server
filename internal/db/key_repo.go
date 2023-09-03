@@ -18,4 +18,6 @@ type KeyRepository interface {
 	Exists(ctx context.Context, repoID data.RepoID, keyID data.KeyID) (bool, error)
 	// ExistsKeyRole checks if data.RepoKey with role exists in database
 	ExistsKeyRole(ctx context.Context, repoID data.RepoID, role data.RoleType) (bool, error)
+	// DeletePrivateKey removes private key
+	DeletePrivateKey(ctx context.Context, repoID data.RepoID, keyID data.KeyID) error
 }
