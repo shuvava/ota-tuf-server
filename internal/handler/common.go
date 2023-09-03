@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
@@ -29,4 +30,16 @@ func getRepoID(ctx echo.Context) (data.RepoID, error) {
 		return data.RepoIDNil, apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter repoID is missing")
 	}
 	return data.RepoIDFromString(repoID)
+}
+
+func getVersion(ctx echo.Context) (uint, error) {
+	ver := ctx.Param(pathVersion)
+	if ver == "" {
+		return 0, apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter version is missing")
+	}
+	v, err := strconv.ParseUint(ver, 10, 32)
+	if err != nil {
+		return 0, apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter version is invalid")
+	}
+	return uint(v), nil
 }

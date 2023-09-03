@@ -3,7 +3,7 @@ module github.com/shuvava/ota-tuf-server
 go 1.21
 
 require (
-	github.com/fsnotify/fsnotify v1.5.1
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/shuvava/go-logging v1.0.6
 	github.com/shuvava/go-ota-svc-common v1.1.3
 	github.com/sirupsen/logrus v1.8.1

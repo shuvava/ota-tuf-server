@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	defaultRoleExpire  = time.Hour //* 24 * 365
+	defaultRoleExpire  = time.Hour * 24 * 365
 	firstVersionNumber = 0
 )
 
@@ -42,6 +42,21 @@ func (svc *SignedContentService) GetCurrentSignature(ctx context.Context, repoID
 		return nil, apperrors.NewAppError(ErrorMissingSignedRole, "no active version found")
 	}
 	return svc.db.FindVersion(ctx, repoID, currentVer)
+}
+
+// GetSignatureVersion returns signature of data.RepoID for version
+func (svc *SignedContentService) GetSignatureVersion(ctx context.Context, repoID data.RepoID, version uint) (*data.SignedRootRole, error) {
+	log := svc.log.SetOperation("GetSignatureVersion").WithContext(ctx)
+	defer log.TrackFuncTime(time.Now())
+	exist, err := svc.db.Exists(ctx, repoID, version)
+	if err != nil {
+		return nil, err
+	}
+	if !exist {
+		return nil, apperrors.NewAppError(ErrorMissingSignedRole, "version not found")
+	}
+
+	return svc.db.FindVersion(ctx, repoID, version)
 }
 
 // CreateNewSignature creates the first data.SignedRootRole for the data.RepoID

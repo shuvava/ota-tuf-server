@@ -16,7 +16,6 @@ import (
 )
 
 const (
-	pathVersion = "version"
 	//PathRepoServerRepoWithNameSpaceResolver is the path to create / modify a key repository with resolving repositoryID from namespace
 	PathRepoServerRepoWithNameSpaceResolver = "/user_repo"
 

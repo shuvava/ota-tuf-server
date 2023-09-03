@@ -20,6 +20,7 @@ import (
 // PathKeyServerRepo is the path to create a new key repository
 const (
 	pathRepoID        = "repoID"
+	pathVersion       = "version"
 	PathKeyServerRepo = "/root/:" + pathRepoID
 	//PathKeyServerRepoWithVersion is the path to create a new key repository
 	PathKeyServerRepoWithVersion = PathKeyServerRepo + "/:" + pathVersion
@@ -77,6 +78,37 @@ func GetRepoSignedContent(ctx echo.Context, svc *services.RepositoryService) err
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
 	res, err := svc.GetAndRefresh(c, repoID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
+	return ctx.JSON(http.StatusOK, res)
+}
+
+// GetRepoSignedContentForVersion returns repo signed metadata for requested version
+func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositoryService, scsvc *services.SignedContentService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	ver, err := getVersion(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil {
+		var typedErr apperrors.AppError
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidation {
+			// try to get repoID from the namespace
+			ns := cmnapi.GetNamespace(ctx)
+			r, e := svc.FindByNamespace(c, ns)
+			if e == nil {
+				repoID = r.RepoID
+				err = nil
+			}
+		}
+	}
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	res, err := scsvc.GetSignatureVersion(c, repoID, ver)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}
