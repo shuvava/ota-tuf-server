@@ -45,17 +45,17 @@ func (s *Server) initWebServer() {
 	s.Echo = e
 }
 
-func repoServerRoutes(s *Server, group *echo.Group) {
-	group.POST(handler.PathRepoServerRepoWithNameSpaceResolver, func(c echo.Context) error {
-		return handler.CreateRoot(c, s.svc.RepoSvc)
-	})
-	group.GET(handler.PathRepoServerRepos, func(c echo.Context) error {
-		return handler.ListRepos(c, s.svc.RepoSvc)
-	})
-	group.GET(handler.PathRepoServerRepoContentWithNameSpaceResolver, func(c echo.Context) error {
-		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
-	})
-}
+//func repoServerRoutes(s *Server, group *echo.Group) {
+//	group.POST(handler.PathRepoServerRepoWithNameSpaceResolver, func(c echo.Context) error {
+//		return handler.CreateRoot(c, s.svc.RepoSvc)
+//	})
+//	group.GET(handler.PathRepoServerRepos, func(c echo.Context) error {
+//		return handler.ListRepos(c, s.svc.RepoSvc)
+//	})
+//	group.GET(handler.PathRepoServerRepoContentWithNameSpaceResolver, func(c echo.Context) error {
+//		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
+//	})
+//}
 
 func keyServerRoutes(s *Server, group *echo.Group) {
 	group.POST(handler.PathKeyServerRepo, func(c echo.Context) error {
@@ -65,7 +65,7 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 		return handler.CreateRoot(c, s.svc.RepoSvc)
 	})
 	group.GET(handler.PathKeyServerRepo, func(c echo.Context) error {
-		return handler.GetRepoSignedContent(c, s.svc.SignedContentSvc, s.svc.RepoSvc)
+		return handler.GetRepoSignedContent(c, s.svc.RepoSvc)
 	})
 }
 

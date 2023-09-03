@@ -34,18 +34,8 @@ func (k KeyType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(strings.ToUpper(string(k)))
 }
 
-// UnmarshalJSON convert string to lower case
-func (k KeyType) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	k = ToKeyType(s)
-	return nil
-}
-
-// ToKeyType converts string to KeyType without validation
-func ToKeyType(s string) KeyType {
+// KeyTypeFromString converts string to KeyType without validation
+func KeyTypeFromString(s string) KeyType {
 	s = strings.ToLower(s)
 	kt := KeyType(s)
 	return kt

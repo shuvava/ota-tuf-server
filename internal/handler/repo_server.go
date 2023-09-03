@@ -29,7 +29,7 @@ const (
 
 type (
 	rootGenRequest struct {
-		Threshold int                `json:"threshold,omitempty"`
+		Threshold uint               `json:"threshold,omitempty"`
 		KeyType   encryption.KeyType `json:"keyType,omitempty"`
 	}
 )

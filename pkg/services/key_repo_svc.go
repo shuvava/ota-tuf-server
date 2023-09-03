@@ -26,24 +26,37 @@ func NewKeyRepositoryService(l logger.Logger, db db.KeyRepository) *KeyRepositor
 }
 
 // CreateNewKey creates new repository key
-func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repoID data.RepoID, role data.RoleType, keyType encryption.KeyType) (data.KeyID, error) {
-	key, err := encryption.NewKey(keyType)
+func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repo *data.Repo, role data.RoleType) (*data.RepoKey, error) {
+	key, err := encryption.NewKey(repo.KeyType)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	keySerialized, err := key.MarshalAllData()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	keyObj := data.RepoKey{
-		RepoID: repoID,
+	keyObj := &data.RepoKey{
+		RepoID: repo.RepoID,
 		Role:   role,
 		KeyID:  data.NewKeyID(key),
 		Key:    *keySerialized,
 	}
 	err = svc.db.Create(ctx, keyObj)
 
-	return keyObj.KeyID, err
+	return keyObj, err
+}
+
+// CreateAllRolesKeys create keys for all root roles
+func (svc *KeyRepositoryService) CreateAllRolesKeys(ctx context.Context, repo *data.Repo) ([]*data.RepoKey, error) {
+	keys := make([]*data.RepoKey, 0)
+	for role := range data.TopLevelRoles {
+		k, err := svc.CreateNewKey(ctx, repo, role)
+		if err != nil {
+			return nil, err
+		}
+		keys = append(keys, k)
+	}
+	return keys, nil
 }
 
 // ExistsKeyRole checks if data.RepoKey with role exists in database
@@ -52,6 +65,6 @@ func (svc *KeyRepositoryService) ExistsKeyRole(ctx context.Context, repoID data.
 }
 
 // GetRepoKeys returns []data.RepoKey for provided repoID
-func (svc *KeyRepositoryService) GetRepoKeys(ctx context.Context, repoID data.RepoID) ([]data.RepoKey, error) {
+func (svc *KeyRepositoryService) GetRepoKeys(ctx context.Context, repoID data.RepoID) ([]*data.RepoKey, error) {
 	return svc.db.FindByRepoID(ctx, repoID)
 }

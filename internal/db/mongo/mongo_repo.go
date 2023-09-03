@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	intData "github.com/shuvava/ota-tuf-server/internal/data"
+	"github.com/shuvava/ota-tuf-server/internal/db"
+	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 
 	"github.com/shuvava/go-logging/logger"
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 	cmndata "github.com/shuvava/go-ota-svc-common/data"
 	intMongo "github.com/shuvava/go-ota-svc-common/db/mongo"
 
-	"github.com/shuvava/ota-tuf-server/internal/db"
-	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const repoTableName = "tuf_repos"
@@ -25,7 +27,8 @@ const repoTableName = "tuf_repos"
 type repoDTO struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty"`
 	Namespace string             `bson:"namespace"`
-	RepoID    string             `bson:"repo_id"`
+	RepoID    string             `bson:"repoId"`
+	KeyType   string             `json:"keyType"`
 }
 
 // TUFRepoMongoRepository implementations of db.TufRepoRepository for MongoDb repo
@@ -33,6 +36,7 @@ type TUFRepoMongoRepository struct {
 	db   *intMongo.Db
 	coll *mongo.Collection
 	log  logger.Logger
+
 	db.TufRepoRepository
 }
 
@@ -47,13 +51,13 @@ func NewTUFRepoMongoRepository(logger logger.Logger, db *intMongo.Db) *TUFRepoMo
 }
 
 // Create persist new data.Repo in database
-func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj data.Repo) error {
+func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj *data.Repo) error {
 	log := store.log.
 		SetOperation("Create").
 		WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("RepoID", obj.RepoID).
-		WithField("Namespace", obj.Namespace).
+	log.WithField(intData.LogFieldRepoID, obj.RepoID).
+		WithField(intData.LogFieldNamespace, obj.Namespace).
 		Debug("Creating new Repo")
 
 	dto := toRepoDTO(obj)
@@ -69,12 +73,12 @@ func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj data.Repo) 
 	}
 	_, err = store.db.InsertOne(ctx, store.coll, dto)
 	if err == nil {
-		log.WithField("RepoID", obj.RepoID).
-			WithField("Namespace", obj.Namespace).
+		log.WithField(intData.LogFieldRepoID, obj.RepoID).
+			WithField(intData.LogFieldNamespace, obj.Namespace).
 			Info("Repo created successful")
 	} else {
-		log.WithField("RepoID", obj.RepoID).
-			WithField("Namespace", obj.Namespace).
+		log.WithField(intData.LogFieldRepoID, obj.RepoID).
+			WithField(intData.LogFieldNamespace, obj.Namespace).
 			Warn("Repo creation failed")
 	}
 	return err
@@ -82,22 +86,44 @@ func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj data.Repo) 
 
 // FindByNamespace returns data.Repo by Namespace
 func (store *TUFRepoMongoRepository) FindByNamespace(ctx context.Context, ns cmndata.Namespace) (*data.Repo, error) {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("FindByNamespace").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("Namespace", ns).
+	log.WithField(intData.LogFieldNamespace, ns).
 		Debug("Looking up Repo by Namespace")
-	filter := getOneRepoFilter(ns)
+	filter := getOneRepoFilterByNamespace(ns)
 	var dto repoDTO
 	err := store.db.GetOne(ctx, store.coll, filter, &dto)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
-			log.WithField("Namespace", ns).
+			log.WithField(intData.LogFieldNamespace, ns).
 				Warn("Repo not found")
 		}
 		return nil, err
 	}
-	log.WithField("Namespace", ns).
+	log.WithField(intData.LogFieldNamespace, ns).
+		Debug("Repo Found")
+	model, err := toRepoModel(dto)
+	return &model, err
+}
+
+// FindByID returns data.Repo by RepoID
+func (store *TUFRepoMongoRepository) FindByID(ctx context.Context, repoID data.RepoID) (*data.Repo, error) {
+	log := store.log.SetOperation("FindByID").WithContext(ctx)
+	log.WithField(intData.LogFieldRepoID, repoID).
+		Debug("Looking up Repo by " + intData.LogFieldRepoID)
+	filter := getOneRepoFilterByRepoID(repoID)
+	var dto repoDTO
+	err := store.db.GetOne(ctx, store.coll, filter, &dto)
+	if err != nil {
+		var typedErr apperrors.AppError
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
+			log.WithField(intData.LogFieldRepoID, repoID).
+				Warn("Repo not found")
+		}
+		return nil, err
+	}
+	log.WithField(intData.LogFieldRepoID, repoID).
 		Debug("Repo Found")
 	model, err := toRepoModel(dto)
 	return &model, err
@@ -105,11 +131,11 @@ func (store *TUFRepoMongoRepository) FindByNamespace(ctx context.Context, ns cmn
 
 // Exists checks if data.RepoKey exists in database
 func (store *TUFRepoMongoRepository) Exists(ctx context.Context, ns cmndata.Namespace) (bool, error) {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("Exists").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("Namespace", ns).
+	log.WithField(intData.LogFieldNamespace, ns).
 		Debug("Looking up Repo by Namespace")
-	filter := getOneRepoFilter(ns)
+	filter := getOneRepoFilterByNamespace(ns)
 	cnt, err := store.db.Count(ctx, store.coll, filter)
 	if err != nil {
 		return false, err
@@ -119,7 +145,7 @@ func (store *TUFRepoMongoRepository) Exists(ctx context.Context, ns cmndata.Name
 
 // List returns all data.Repo
 func (store *TUFRepoMongoRepository) List(ctx context.Context, skip, limit int64, sortFiled *string) ([]*data.Repo, int64, error) {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("List").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField("Skip", skip).
 		WithField("Limit", limit).
@@ -154,7 +180,7 @@ func (store *TUFRepoMongoRepository) List(ctx context.Context, skip, limit int64
 	return res, dbRes[0].Total[0].Count, nil
 }
 
-func getOneRepoFilter(ns cmndata.Namespace) bson.D {
+func getOneRepoFilterByNamespace(ns cmndata.Namespace) bson.D {
 	return bson.D{primitive.E{
 		Key: "$and",
 		Value: bson.A{
@@ -163,12 +189,22 @@ func getOneRepoFilter(ns cmndata.Namespace) bson.D {
 	}}
 }
 
+func getOneRepoFilterByRepoID(repoID data.RepoID) bson.D {
+	return bson.D{primitive.E{
+		Key: "$and",
+		Value: bson.A{
+			bson.D{primitive.E{Key: "repoId", Value: repoID.String()}},
+		},
+	}}
+}
+
 // toRepoKeyDTO converts data.RepoKey to DTO
-func toRepoDTO(obj data.Repo) repoDTO {
+func toRepoDTO(obj *data.Repo) repoDTO {
 	return repoDTO{
 		ID:        primitive.NewObjectID(),
 		RepoID:    obj.RepoID.String(),
 		Namespace: string(obj.Namespace),
+		KeyType:   string(obj.KeyType),
 	}
 }
 
@@ -180,6 +216,7 @@ func toRepoModel(dto repoDTO) (data.Repo, error) {
 	return data.Repo{
 		RepoID:    repoID,
 		Namespace: cmndata.Namespace(dto.Namespace),
+		KeyType:   encryption.KeyTypeFromString(dto.KeyType),
 	}, nil
 }
 

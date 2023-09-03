@@ -12,7 +12,7 @@ import (
 // RoleKeys is sorted list of key associated with RoleType
 type RoleKeys struct {
 	Keys      []KeyID `json:"keyids"`
-	Threshold int     `json:"threshold"`
+	Threshold uint    `json:"threshold"`
 }
 
 // VersionedRole is a base type of allowed roles
@@ -36,12 +36,12 @@ type RootRole struct {
 }
 
 // NewRootRole creates a new RootRole
-func NewRootRole(keys map[KeyID]*encryption.SerializedKey, roles map[RoleType][]KeyID, version uint, expires time.Time) *RootRole {
+func NewRootRole(keys map[KeyID]*encryption.SerializedKey, roles map[RoleType][]KeyID, version uint, expires time.Time, threshold uint) *RootRole {
 	roleKeys := make(map[RoleType]RoleKeys)
 	for k, v := range roles {
 		roleKeys[k] = RoleKeys{
 			Keys:      v,
-			Threshold: 1,
+			Threshold: threshold,
 		}
 	}
 	role := &RootRole{
@@ -64,7 +64,7 @@ func (rr *RootRole) GetRoleKeys(rtype RoleType) []KeyID {
 }
 
 // Sign create SignedPayload for the RootRole
-func (rr *RootRole) Sign(keys []RepoKey) (*SignedPayload[RootRole], error) {
+func (rr *RootRole) Sign(keys []*RepoKey) (*SignedPayload[RootRole], error) {
 	b, err := json.Marshal(rr)
 	if err != nil {
 		return nil, apperrors.NewAppError(

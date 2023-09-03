@@ -6,26 +6,28 @@ import (
 	"fmt"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	mdb "go.mongodb.org/mongo-driver/mongo"
+	intData "github.com/shuvava/ota-tuf-server/internal/data"
+	"github.com/shuvava/ota-tuf-server/internal/db"
+	"github.com/shuvava/ota-tuf-server/pkg/data"
 
 	"github.com/shuvava/go-logging/logger"
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 	intMongo "github.com/shuvava/go-ota-svc-common/db/mongo"
 
-	"github.com/shuvava/ota-tuf-server/internal/db"
-	"github.com/shuvava/ota-tuf-server/pkg/data"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	mdb "go.mongodb.org/mongo-driver/mongo"
 )
 
 const signedRepoTableName = "tuf_signed"
 
 type repoSignedContentDTO struct {
 	ID        primitive.ObjectID                 `bson:"_id,omitempty"`
-	RepoID    string                             `bson:"repo_id"`
-	ExpiresAt time.Time                          `bson:"expires_at"`
+	RepoID    string                             `bson:"repoId"`
+	ExpiresAt time.Time                          `bson:"expiresAt"`
 	Version   uint                               `bson:"version"`
-	Content   *data.SignedPayload[data.RootRole] `bson:"signed_payload"`
+	Threshold uint                               `bson:"threshold"`
+	Content   *data.SignedPayload[data.RootRole] `bson:"signedPayload"`
 }
 
 // SignedContentMongoRepository implementation of db.TufSignedContent for MongoDb repo
@@ -38,7 +40,7 @@ type SignedContentMongoRepository struct {
 
 // NewSignedContentMongoRepository creates new instance of SignedContentMongoRepository
 func NewSignedContentMongoRepository(logger logger.Logger, db *intMongo.Db) *SignedContentMongoRepository {
-	log := logger.SetOperation("SignedContentRepo")
+	log := logger.SetArea("SignedContentRepo")
 	return &SignedContentMongoRepository{
 		db:   db,
 		coll: db.GetCollection(signedRepoTableName),
@@ -48,10 +50,10 @@ func NewSignedContentMongoRepository(logger logger.Logger, db *intMongo.Db) *Sig
 
 // Create persist new data.SignedRootRole in database
 func (store *SignedContentMongoRepository) Create(ctx context.Context, obj *data.SignedRootRole) error {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("Create").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("RepoID", obj.RepoID).
-		WithField("Version", obj.Version).
+	log.WithField(intData.LogFieldRepoID, obj.RepoID).
+		WithField(intData.LogFieldVersion, obj.Version).
 		Debug("Creating new SignedContent")
 
 	exists, err := store.Exists(ctx, obj.RepoID, obj.Version)
@@ -65,15 +67,14 @@ func (store *SignedContentMongoRepository) Create(ctx context.Context, obj *data
 			"Failed to add new DB record", err)
 	}
 	dto := toSignedContentDTO(obj)
-	id, err := store.db.InsertOne(ctx, store.coll, dto)
+	_, err = store.db.InsertOne(ctx, store.coll, dto)
 	if err == nil {
-		log.WithField("RepoID", obj.RepoID).
-			WithField("Version", obj.Version).
-			WithField("ObjectID", id).
+		log.WithField(intData.LogFieldRepoID, obj.RepoID).
+			WithField(intData.LogFieldVersion, obj.Version).
 			Info("SignedContent created successful")
 	} else {
-		log.WithField("RepoID", obj.RepoID).
-			WithField("Version", obj.Version).
+		log.WithField(intData.LogFieldRepoID, obj.RepoID).
+			WithField(intData.LogFieldVersion, obj.Version).
 			Warn("SignedContent creation failed")
 	}
 	return err
@@ -81,10 +82,10 @@ func (store *SignedContentMongoRepository) Create(ctx context.Context, obj *data
 
 // Exists checks if data.SignedRootRole exists in database
 func (store *SignedContentMongoRepository) Exists(ctx context.Context, repoID data.RepoID, ver uint) (bool, error) {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("Exists").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("RepoID", repoID).
-		WithField("Version", ver).
+	log.WithField(intData.LogFieldRepoID, repoID).
+		WithField(intData.LogFieldVersion, ver).
 		Debug("Checkin existence of the SignedContent")
 	filter := getOneSignedContentFilter(repoID, ver)
 	cnt, err := store.db.Count(ctx, store.coll, filter)
@@ -96,10 +97,10 @@ func (store *SignedContentMongoRepository) Exists(ctx context.Context, repoID da
 
 // FindVersion returns data.SignedRootRole with Version equal to ver parameter
 func (store *SignedContentMongoRepository) FindVersion(ctx context.Context, repoID data.RepoID, ver uint) (*data.SignedRootRole, error) {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("FindVersion").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("RepoID", repoID).
-		WithField("Version", ver).
+	log.WithField(intData.LogFieldRepoID, repoID).
+		WithField(intData.LogFieldVersion, ver).
 		Debug("Looking up SignedContent")
 	filter := getOneSignedContentFilter(repoID, ver)
 	var dto repoSignedContentDTO
@@ -107,23 +108,23 @@ func (store *SignedContentMongoRepository) FindVersion(ctx context.Context, repo
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
-			log.WithField("RepoID", repoID).
-				WithField("Version", ver).
+			log.WithField(intData.LogFieldRepoID, repoID).
+				WithField(intData.LogFieldVersion, ver).
 				Warn("SignedContent not found")
 		}
 		return nil, err
 	}
-	log.WithField("RepoID", repoID).
-		WithField("Version", ver).
+	log.WithField(intData.LogFieldRepoID, repoID).
+		WithField(intData.LogFieldVersion, ver).
 		Debug("Object Found")
 	return toSignedContentModel(dto)
 }
 
 // GetMaxVersion returns current repo version
 func (store *SignedContentMongoRepository) GetMaxVersion(ctx context.Context, repoID data.RepoID) (uint, error) {
-	log := store.log.WithContext(ctx)
+	log := store.log.SetOperation("GetMaxVersion").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField("RepoID", repoID).
+	log.WithField(intData.LogFieldRepoID, repoID).
 		Debug("Getting max version of SignedContent")
 	pipeline := make([]bson.M, 0)
 	groupStage := bson.M{
@@ -134,7 +135,7 @@ func (store *SignedContentMongoRepository) GetMaxVersion(ctx context.Context, re
 	}
 	matchStage := bson.M{
 		"$match": bson.M{
-			"repo_id": repoID.String(),
+			"repoId": repoID.String(),
 		},
 	}
 	pipeline = append(pipeline, matchStage, groupStage)
@@ -153,7 +154,7 @@ func getOneSignedContentFilter(repoID data.RepoID, ver uint) bson.D {
 	return bson.D{primitive.E{
 		Key: "$and",
 		Value: bson.A{
-			bson.D{primitive.E{Key: "repo_id", Value: repoID.String()}},
+			bson.D{primitive.E{Key: "repoId", Value: repoID.String()}},
 			bson.D{primitive.E{Key: "version", Value: ver}},
 		},
 	}}
@@ -167,6 +168,7 @@ func toSignedContentDTO(obj *data.SignedRootRole) repoSignedContentDTO {
 		ExpiresAt: obj.ExpiresAt,
 		Version:   obj.Version,
 		Content:   obj.Content,
+		Threshold: obj.Threshold,
 	}
 }
 
@@ -180,5 +182,6 @@ func toSignedContentModel(dto repoSignedContentDTO) (*data.SignedRootRole, error
 		ExpiresAt: dto.ExpiresAt,
 		Version:   dto.Version,
 		Content:   dto.Content,
+		Threshold: dto.Threshold,
 	}, nil
 }

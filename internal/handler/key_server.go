@@ -40,11 +40,11 @@ func CreateRoot(ctx echo.Context, svc *services.RepositoryService) error { //nol
 	if err = ctx.Bind(genReq); err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
-	genReq.KeyType = encryption.ToKeyType(string(genReq.KeyType))
+	genReq.KeyType = encryption.KeyTypeFromString(string(genReq.KeyType))
 	if err = genReq.Validate(); err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
-	keys, err := svc.Create(c, ns, repoID, genReq.KeyType)
+	keys, err := svc.Create(c, ns, repoID, genReq.KeyType, genReq.Threshold)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && (typedErr.ErrorCode == mongo.ErrorRepoErrorDbAlreadyExist ||
@@ -58,7 +58,7 @@ func CreateRoot(ctx echo.Context, svc *services.RepositoryService) error { //nol
 }
 
 // GetRepoSignedContent returns current repo signed metadata
-func GetRepoSignedContent(ctx echo.Context, svc *services.SignedContentService, rsvc *services.RepositoryService) error { //nolint:typecheck
+func GetRepoSignedContent(ctx echo.Context, svc *services.RepositoryService) error { //nolint:typecheck
 	c := cmnapi.GetRequestContext(ctx)
 	repoID, err := getRepoID(ctx)
 	if repoID == data.RepoIDNil {
@@ -66,7 +66,7 @@ func GetRepoSignedContent(ctx echo.Context, svc *services.SignedContentService, 
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidation {
 			// try to get repoID from the namespace
 			ns := cmnapi.GetNamespace(ctx)
-			r, e := rsvc.FindByNamespace(c, ns)
+			r, e := svc.FindByNamespace(c, ns)
 			if e == nil {
 				repoID = r.RepoID
 				err = nil
@@ -76,7 +76,7 @@ func GetRepoSignedContent(ctx echo.Context, svc *services.SignedContentService, 
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
-	res, err := svc.GetRepoSignedMeta(c, repoID)
+	res, err := svc.GetAndRefresh(c, repoID)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}

@@ -25,7 +25,7 @@ func TestMongoDB(t *testing.T) {
 	svc := mongo.NewTUFRepoMongoRepository(log, mongoDb)
 	t.Run("should be created", func(t *testing.T) {
 		ns := cmndata.NewNamespace(cmndata.NewCorrelationID().String())
-		repo := data.Repo{
+		repo := &data.Repo{
 			Namespace: ns,
 			RepoID:    data.NewRepoID(),
 		}
