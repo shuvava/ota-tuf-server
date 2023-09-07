@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/ota-tuf-server/internal/db"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 
 	"github.com/shuvava/go-logging/logger"
+	"github.com/shuvava/go-ota-svc-common/apperrors"
 )
 
 const (

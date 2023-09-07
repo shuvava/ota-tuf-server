@@ -8,8 +8,9 @@ import (
 
 // Repo is a TUF repo object
 type Repo struct {
-	Namespace cmndata.Namespace  `json:"namespace"`
-	RepoID    RepoID             `json:"repoId"`
-	KeyType   encryption.KeyType `json:"keyType"`
-	Threshold uint               `json:"threshold"`
+	Namespace      cmndata.Namespace  `json:"namespace"`
+	RepoID         RepoID             `json:"repoId"`
+	KeyType        encryption.KeyType `json:"keyType"`
+	Threshold      uint               `json:"threshold"`
+	CurrentVersion uint               `json:"currentVersion"`
 }

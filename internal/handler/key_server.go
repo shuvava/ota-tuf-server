@@ -31,6 +31,8 @@ const (
 	PathKeyServerRepoWithKeyID = PathKeyServerRepo + "/private_keys/:" + pathKeyID
 	// PathKeyServerRepoWithRole is path to sign payload by provided role of the repo
 	PathKeyServerRepoWithRole = PathKeyServerRepo + "/:" + pathRole
+	// PathKeyServerRepoUnsigned is path to get current state of TUF repo without signature
+	PathKeyServerRepoUnsigned = PathKeyServerRepo + "/unsigned"
 )
 
 // CreateRoot creates a new TUF key repository
@@ -164,5 +166,20 @@ func SignPayload(ctx echo.Context, svc *services.RepositoryService) error {
 	}
 	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
 	return ctx.JSON(http.StatusOK, res)
+}
 
+// GetRepoWithoutSignature returns unsigned data.Repo model
+func GetRepoWithoutSignature(ctx echo.Context, svc *services.RepositoryService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil || err != nil {
+		err = apperrors.NewAppError(errcodes.ErrorAPIRequestValidationParamMissing, "parameter repoID missing or invalid")
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	res, err := svc.GetUnsigned(c, repoID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
+	return ctx.JSON(http.StatusOK, res)
 }

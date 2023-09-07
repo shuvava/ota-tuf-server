@@ -76,6 +76,9 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	group.POST(handler.PathKeyServerRepoWithRole, func(c echo.Context) error {
 		return handler.SignPayload(c, s.svc.RepoSvc)
 	})
+	group.GET(handler.PathKeyServerRepoUnsigned, func(c echo.Context) error {
+		return handler.GetRepoWithoutSignature(c, s.svc.RepoSvc)
+	})
 }
 
 func initHealthRoutes(s *Server, e *echo.Echo) {

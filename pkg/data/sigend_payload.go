@@ -2,7 +2,7 @@ package data
 
 // SignedPayload is public model with signed content
 type SignedPayload[T RepoSigned | RoleSign] struct {
-	Signatures []*ClientSignature `json:"signatures"`
+	Signatures []*ClientSignature `json:"signatures,omitempty"`
 	Signed     *T                 `json:"signed"`
 }
 

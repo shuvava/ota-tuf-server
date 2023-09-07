@@ -25,11 +25,12 @@ import (
 const repoTableName = "tuf_repos"
 
 type repoDTO struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	Namespace string             `bson:"namespace"`
-	RepoID    string             `bson:"repoId"`
-	KeyType   string             `json:"keyType"`
-	Threshold uint               `json:"threshold"`
+	ID             primitive.ObjectID `bson:"_id,omitempty"`
+	Namespace      string             `bson:"namespace"`
+	RepoID         string             `bson:"repoId"`
+	KeyType        string             `json:"keyType"`
+	Threshold      uint               `json:"threshold"`
+	CurrentVersion uint               `json:"currentVersion"`
 }
 
 // TUFRepoMongoRepository implementations of db.TufRepoRepository for MongoDb repo
@@ -176,6 +177,33 @@ func (store *TUFRepoMongoRepository) List(ctx context.Context, skip, limit int64
 	return res, dbRes[0].Total[0].Count, nil
 }
 
+// UpdateVersion bump current version of the data.Repo
+func (store *TUFRepoMongoRepository) UpdateVersion(ctx context.Context, repoID data.RepoID, ver uint) error {
+	log := store.log.SetOperation("Exists").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, repoID)
+	defer log.TrackFuncTime(time.Now())
+	log.Debug("Updating repo version")
+	filter := getOneRepoFilterByRepoID(repoID)
+	upd := bson.D{primitive.E{
+		Key: "$set", Value: bson.M{
+			"currentVersion": ver,
+		},
+	}}
+	err := store.db.UpdateOne(ctx, store.coll, filter, upd)
+	if err != nil {
+		var typedErr apperrors.AppError
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
+			log.Warn("repo not found")
+		} else {
+			log.Warn("Updating repo version failed")
+		}
+		return err
+	}
+	log.Info("Repo version updated successful")
+	return nil
+}
+
 func getOneRepoFilterByNamespace(ns cmndata.Namespace) bson.D {
 	return bson.D{primitive.E{
 		Key: "$and",
@@ -197,11 +225,12 @@ func getOneRepoFilterByRepoID(repoID data.RepoID) bson.D {
 // toRepoKeyDTO converts data.RepoKey to DTO
 func toRepoDTO(obj *data.Repo) repoDTO {
 	return repoDTO{
-		ID:        primitive.NewObjectID(),
-		RepoID:    obj.RepoID.String(),
-		Namespace: string(obj.Namespace),
-		KeyType:   string(obj.KeyType),
-		Threshold: obj.Threshold,
+		ID:             primitive.NewObjectID(),
+		RepoID:         obj.RepoID.String(),
+		Namespace:      string(obj.Namespace),
+		KeyType:        string(obj.KeyType),
+		Threshold:      obj.Threshold,
+		CurrentVersion: obj.CurrentVersion,
 	}
 }
 
@@ -211,10 +240,11 @@ func toRepoModel(dto repoDTO) (data.Repo, error) {
 		return data.Repo{}, err
 	}
 	return data.Repo{
-		RepoID:    repoID,
-		Namespace: cmndata.Namespace(dto.Namespace),
-		KeyType:   encryption.KeyTypeFromString(dto.KeyType),
-		Threshold: dto.Threshold,
+		RepoID:         repoID,
+		Namespace:      cmndata.Namespace(dto.Namespace),
+		KeyType:        encryption.KeyTypeFromString(dto.KeyType),
+		Threshold:      dto.Threshold,
+		CurrentVersion: dto.CurrentVersion,
 	}, nil
 }
 

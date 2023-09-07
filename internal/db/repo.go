@@ -15,9 +15,11 @@ type TufRepoRepository interface {
 	// FindByNamespace returns data.Repo by Namespace
 	FindByNamespace(ctx context.Context, ns cmndata.Namespace) (*data.Repo, error)
 	// FindByID returns data.Repo by RepoID
-	FindByID(ctx context.Context, id data.RepoID) (*data.Repo, error)
+	FindByID(ctx context.Context, repoID data.RepoID) (*data.Repo, error)
 	// Exists checks if data.Repo exists in database
 	Exists(ctx context.Context, ns cmndata.Namespace) (bool, error)
 	// List returns all data.Repo
 	List(ctx context.Context, skip, limit int64, sortFiled *string) ([]*data.Repo, int64, error)
+	// UpdateVersion bump current version of the data.Repo
+	UpdateVersion(ctx context.Context, repoID data.RepoID, ver uint) error
 }

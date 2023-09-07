@@ -36,16 +36,18 @@ func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, signedC
 
 // Create initializes new repository by creating and persisting new key pair for data.TopLevelRoles
 func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, repoID data.RepoID, keyType encryption.KeyType, threshold uint) ([]data.KeyID, error) {
-	log := svc.log.SetOperation("Create").WithContext(ctx)
+	log := svc.log.SetOperation("Create").
+		WithContext(ctx).
+		WithField(intData.LogFieldNamespace, ns).
+		WithField(intData.LogFieldRepoID, repoID)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldNamespace, ns).
-		WithField(intData.LogFieldRepoID, repoID).
-		Debug("Creating new TUF repository")
+	log.Debug("Creating new TUF repository")
 	repo := &data.Repo{
-		Namespace: ns,
-		RepoID:    repoID,
-		KeyType:   keyType,
-		Threshold: threshold,
+		Namespace:      ns,
+		RepoID:         repoID,
+		KeyType:        keyType,
+		Threshold:      threshold,
+		CurrentVersion: 1,
 	}
 	if err := svc.db.Create(ctx, repo); err != nil {
 		return nil, err
@@ -91,10 +93,11 @@ func (svc *RepositoryService) Exists(ctx context.Context, repoID data.RepoID) (b
 
 // GetAndRefresh returns repo updated signature of the TUF repository with data.RepoID
 func (svc *RepositoryService) GetAndRefresh(ctx context.Context, repoID data.RepoID) (*data.SignedPayload[data.RepoSigned], error) {
-	log := svc.log.SetOperation("GetAndRefresh").WithContext(ctx)
+	log := svc.log.SetOperation("GetAndRefresh").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, repoID)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldRepoID, repoID).
-		Debug("Get and refresh TUF repo")
+	log.Debug("Get and refresh TUF repo")
 	sig, err := svc.signedCtnSvc.GetCurrentVersion(ctx, repoID)
 	if err != nil {
 		return nil, err
@@ -119,9 +122,40 @@ func (svc *RepositoryService) GetAndRefresh(ctx context.Context, repoID data.Rep
 		if err != nil {
 			return nil, err
 		}
+		err = svc.db.UpdateVersion(ctx, repoID, sig.Version)
+		if err != nil {
+			return nil, err
+		}
+		log.WithField(intData.LogFieldVersion, sig.Version).
+			Info("TUF repo refreshed")
 	}
 
 	return sig.Content, nil
+}
+
+// GetUnsigned returns unsigned version of the current version repository
+func (svc *RepositoryService) GetUnsigned(ctx context.Context, repoID data.RepoID) (*data.SignedPayload[data.RepoSigned], error) {
+	log := svc.log.SetOperation("GetAndRefresh").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, repoID)
+	defer log.TrackFuncTime(time.Now())
+	log.Debug("Get TUF repo")
+	repo, err := svc.db.FindByID(ctx, repoID)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := svc.keySvc.GetRepoKeys(ctx, repoID)
+	if err != nil {
+		return nil, err
+	}
+	r, err := createNewVersion(repo.CurrentVersion-1, keys, repo.Threshold)
+	if err != nil {
+		return nil, err
+	}
+	res := &data.SignedPayload[data.RepoSigned]{
+		Signed: r,
+	}
+	return res, nil
 }
 
 // SignPayload sign payload by provided role
