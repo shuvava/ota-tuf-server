@@ -3,7 +3,7 @@ package services
 import "github.com/shuvava/go-ota-svc-common/apperrors"
 
 const (
-	// ErrorSvcSignedContent is SignedContentService group of errors
+	// ErrorSvcSignedContent is RepoVersionService group of errors
 	ErrorSvcSignedContent = apperrors.ErrorNamespaceSvc + ":SignedContent"
 	// ErrorSvcSignedContentKeyNotFound is not found keys error
 	ErrorSvcSignedContentKeyNotFound = ErrorSvcSignedContent + ":KeyNotFound"

@@ -8,15 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/sirupsen/logrus"
+	"github.com/shuvava/ota-tuf-server/internal/config"
+	"github.com/shuvava/ota-tuf-server/internal/db"
+	"github.com/shuvava/ota-tuf-server/pkg/services"
 
 	"github.com/shuvava/go-logging/logger"
 	intCmnDb "github.com/shuvava/go-ota-svc-common/db"
 
-	"github.com/shuvava/ota-tuf-server/internal/config"
-	"github.com/shuvava/ota-tuf-server/internal/db"
-	"github.com/shuvava/ota-tuf-server/pkg/services"
+	"github.com/labstack/echo/v4"
+	"github.com/sirupsen/logrus"
 )
 
 // Server is main application servers
@@ -32,7 +32,7 @@ type Server struct {
 		SignedContent    db.TufSignedContent
 		RepoSvc          *services.RepositoryService
 		KeyRepoSvc       *services.KeyRepositoryService
-		SignedContentSvc *services.SignedContentService
+		SignedContentSvc *services.RepoVersionService
 	}
 }
 

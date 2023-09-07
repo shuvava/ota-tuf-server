@@ -20,11 +20,11 @@ type RepositoryService struct {
 	log          logger.Logger
 	db           db.TufRepoRepository
 	keySvc       *KeyRepositoryService
-	signedCtnSvc *SignedContentService
+	signedCtnSvc *RepoVersionService
 }
 
 // NewRepositoryService creates new instance of services.RepositoryService
-func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, signedCtnSvc *SignedContentService, db db.TufRepoRepository) *RepositoryService {
+func NewRepositoryService(l logger.Logger, keySvc *KeyRepositoryService, signedCtnSvc *RepoVersionService, db db.TufRepoRepository) *RepositoryService {
 	log := l.SetArea("repository-service")
 	return &RepositoryService{
 		log:          log,
@@ -45,6 +45,7 @@ func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, 
 		Namespace: ns,
 		RepoID:    repoID,
 		KeyType:   keyType,
+		Threshold: threshold,
 	}
 	if err := svc.db.Create(ctx, repo); err != nil {
 		return nil, err
@@ -54,7 +55,7 @@ func (svc *RepositoryService) Create(ctx context.Context, ns cmndata.Namespace, 
 		return nil, err
 	}
 
-	if err = svc.signedCtnSvc.CreateNewSignature(ctx, repoID, keys, threshold); err != nil {
+	if err = svc.signedCtnSvc.CreateFirstVersion(ctx, repoID, keys, threshold); err != nil {
 		return nil, err
 	}
 	keyIds := make([]data.KeyID, len(keys))
@@ -89,12 +90,12 @@ func (svc *RepositoryService) Exists(ctx context.Context, repoID data.RepoID) (b
 }
 
 // GetAndRefresh returns repo updated signature of the TUF repository with data.RepoID
-func (svc *RepositoryService) GetAndRefresh(ctx context.Context, repoID data.RepoID) (*data.SignedPayload[data.RootRole], error) {
+func (svc *RepositoryService) GetAndRefresh(ctx context.Context, repoID data.RepoID) (*data.SignedPayload[data.RepoSigned], error) {
 	log := svc.log.SetOperation("GetAndRefresh").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	log.WithField(intData.LogFieldRepoID, repoID).
 		Debug("Get and refresh TUF repo")
-	sig, err := svc.signedCtnSvc.GetCurrentSignature(ctx, repoID)
+	sig, err := svc.signedCtnSvc.GetCurrentVersion(ctx, repoID)
 	if err != nil {
 		return nil, err
 	}
@@ -114,11 +115,42 @@ func (svc *RepositoryService) GetAndRefresh(ctx context.Context, repoID data.Rep
 		}
 		keys = append(keys, newKeys...)
 		// and update repo signature
-		sig, err = svc.signedCtnSvc.UpdateSignature(ctx, sig, keys)
+		sig, err = svc.signedCtnSvc.UpdateRepoVersion(ctx, sig, keys)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	return sig.Content, nil
+}
+
+// SignPayload sign payload by provided role
+func (svc *RepositoryService) SignPayload(ctx context.Context, repoID data.RepoID, role data.RoleType, payload interface{}) (*data.SignedPayload[data.RoleSign], error) {
+	log := svc.log.SetOperation("SignPayload").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, repoID).
+		WithField(intData.LogFieldRole, role)
+	defer log.TrackFuncTime(time.Now())
+	log.Debug("Signing payload with role keys")
+	repo, err := svc.db.FindByID(ctx, repoID)
+	if err != nil {
+		return nil, err
+	}
+	keys, err := svc.keySvc.GetRepoKeysForRole(ctx, repoID, role)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := data.SignPayload(payload, keys)
+	if err != nil {
+		return nil, err
+	}
+	roleSig := &data.RoleSign{
+		Role:      role,
+		Threshold: repo.Threshold,
+	}
+	sigPayload := &data.SignedPayload[data.RoleSign]{
+		Signatures: sig,
+		Signed:     roleSig,
+	}
+	return sigPayload, nil
 }

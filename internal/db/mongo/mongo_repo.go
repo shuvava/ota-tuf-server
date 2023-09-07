@@ -29,6 +29,7 @@ type repoDTO struct {
 	Namespace string             `bson:"namespace"`
 	RepoID    string             `bson:"repoId"`
 	KeyType   string             `json:"keyType"`
+	Threshold uint               `json:"threshold"`
 }
 
 // TUFRepoMongoRepository implementations of db.TufRepoRepository for MongoDb repo
@@ -54,11 +55,11 @@ func NewTUFRepoMongoRepository(logger logger.Logger, db *intMongo.Db) *TUFRepoMo
 func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj *data.Repo) error {
 	log := store.log.
 		SetOperation("Create").
-		WithContext(ctx)
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, obj.RepoID).
+		WithField(intData.LogFieldNamespace, obj.Namespace)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldRepoID, obj.RepoID).
-		WithField(intData.LogFieldNamespace, obj.Namespace).
-		Debug("Creating new Repo")
+	log.Debug("Creating new Repo")
 
 	dto := toRepoDTO(obj)
 	exists, err := store.Exists(ctx, obj.Namespace)
@@ -73,68 +74,63 @@ func (store *TUFRepoMongoRepository) Create(ctx context.Context, obj *data.Repo)
 	}
 	_, err = store.db.InsertOne(ctx, store.coll, dto)
 	if err == nil {
-		log.WithField(intData.LogFieldRepoID, obj.RepoID).
-			WithField(intData.LogFieldNamespace, obj.Namespace).
-			Info("Repo created successful")
+		log.Info("Repo created successful")
 	} else {
-		log.WithField(intData.LogFieldRepoID, obj.RepoID).
-			WithField(intData.LogFieldNamespace, obj.Namespace).
-			Warn("Repo creation failed")
+		log.Warn("Repo creation failed")
 	}
 	return err
 }
 
 // FindByNamespace returns data.Repo by Namespace
 func (store *TUFRepoMongoRepository) FindByNamespace(ctx context.Context, ns cmndata.Namespace) (*data.Repo, error) {
-	log := store.log.SetOperation("FindByNamespace").WithContext(ctx)
+	log := store.log.SetOperation("FindByNamespace").
+		WithContext(ctx).
+		WithField(intData.LogFieldNamespace, ns)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldNamespace, ns).
-		Debug("Looking up Repo by Namespace")
+	log.Debug("Looking up Repo by Namespace")
 	filter := getOneRepoFilterByNamespace(ns)
 	var dto repoDTO
 	err := store.db.GetOne(ctx, store.coll, filter, &dto)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
-			log.WithField(intData.LogFieldNamespace, ns).
-				Warn("Repo not found")
+			log.Warn("Repo not found")
 		}
 		return nil, err
 	}
-	log.WithField(intData.LogFieldNamespace, ns).
-		Debug("Repo Found")
+	log.Debug("Repo Found")
 	model, err := toRepoModel(dto)
 	return &model, err
 }
 
 // FindByID returns data.Repo by RepoID
 func (store *TUFRepoMongoRepository) FindByID(ctx context.Context, repoID data.RepoID) (*data.Repo, error) {
-	log := store.log.SetOperation("FindByID").WithContext(ctx)
-	log.WithField(intData.LogFieldRepoID, repoID).
-		Debug("Looking up Repo by " + intData.LogFieldRepoID)
+	log := store.log.SetOperation("FindByID").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, repoID)
+	log.Debug("Looking up Repo by " + intData.LogFieldRepoID)
 	filter := getOneRepoFilterByRepoID(repoID)
 	var dto repoDTO
 	err := store.db.GetOne(ctx, store.coll, filter, &dto)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
-			log.WithField(intData.LogFieldRepoID, repoID).
-				Warn("Repo not found")
+			log.Warn("Repo not found")
 		}
 		return nil, err
 	}
-	log.WithField(intData.LogFieldRepoID, repoID).
-		Debug("Repo Found")
+	log.Debug("Repo Found")
 	model, err := toRepoModel(dto)
 	return &model, err
 }
 
 // Exists checks if data.RepoKey exists in database
 func (store *TUFRepoMongoRepository) Exists(ctx context.Context, ns cmndata.Namespace) (bool, error) {
-	log := store.log.SetOperation("Exists").WithContext(ctx)
+	log := store.log.SetOperation("Exists").
+		WithContext(ctx).
+		WithField(intData.LogFieldNamespace, ns)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldNamespace, ns).
-		Debug("Looking up Repo by Namespace")
+	log.Debug("Looking up Repo by Namespace")
 	filter := getOneRepoFilterByNamespace(ns)
 	cnt, err := store.db.Count(ctx, store.coll, filter)
 	if err != nil {
@@ -205,6 +201,7 @@ func toRepoDTO(obj *data.Repo) repoDTO {
 		RepoID:    obj.RepoID.String(),
 		Namespace: string(obj.Namespace),
 		KeyType:   string(obj.KeyType),
+		Threshold: obj.Threshold,
 	}
 }
 
@@ -217,6 +214,7 @@ func toRepoModel(dto repoDTO) (data.Repo, error) {
 		RepoID:    repoID,
 		Namespace: cmndata.Namespace(dto.Namespace),
 		KeyType:   encryption.KeyTypeFromString(dto.KeyType),
+		Threshold: dto.Threshold,
 	}, nil
 }
 

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shuvava/go-logging/logger"
-	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/ota-tuf-server/internal/db/mongo"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 
+	"github.com/shuvava/go-logging/logger"
+	"github.com/shuvava/go-ota-svc-common/apperrors"
 	intCmnDb "github.com/shuvava/go-ota-svc-common/db/mongo"
 )
 
@@ -31,7 +31,7 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		obj := &data.SignedRootRole{
 			RepoID:  repoID,
 			Version: 1,
-			Content: &data.SignedPayload[data.RootRole]{
+			Content: &data.SignedPayload[data.RepoSigned]{
 				Signatures: []*data.ClientSignature{sig},
 			},
 			ExpiresAt: time.Now().Add(time.Hour * 3),
@@ -50,7 +50,7 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		obj := &data.SignedRootRole{
 			RepoID:  repoID,
 			Version: 2,
-			Content: &data.SignedPayload[data.RootRole]{
+			Content: &data.SignedPayload[data.RepoSigned]{
 				Signatures: []*data.ClientSignature{sig},
 			},
 			ExpiresAt: time.Now().Add(time.Hour * 3),
@@ -71,7 +71,7 @@ func TestSignedContentMongoRepository(t *testing.T) {
 		obj := &data.SignedRootRole{
 			RepoID:    repoID,
 			Version:   100,
-			Content:   &data.SignedPayload[data.RootRole]{},
+			Content:   &data.SignedPayload[data.RepoSigned]{},
 			ExpiresAt: time.Now().Add(time.Hour * 3),
 		}
 		if err = svc.Create(ctx, obj); err != nil {

@@ -7,11 +7,11 @@ import (
 // SignedRootRole is a TUF repo signed Role
 type SignedRootRole struct {
 	// RepoID is the id of the repo
-	RepoID    RepoID                   `json:"repo_id"`
-	ExpiresAt time.Time                `json:"expires_at"`
-	Version   uint                     `json:"version"`
-	Threshold uint                     `json:"threshold"`
-	Content   *SignedPayload[RootRole] `json:"signed_payload"`
+	RepoID    RepoID                     `json:"repo_id"`
+	ExpiresAt time.Time                  `json:"expires_at"`
+	Version   uint                       `json:"version"`
+	Threshold uint                       `json:"threshold"`
+	Content   *SignedPayload[RepoSigned] `json:"signed_payload"`
 }
 
 // ShouldBeRenewed TUF repo signature should be renewed

@@ -22,12 +22,12 @@ import (
 const signedRepoTableName = "tuf_signed"
 
 type repoSignedContentDTO struct {
-	ID        primitive.ObjectID                 `bson:"_id,omitempty"`
-	RepoID    string                             `bson:"repoId"`
-	ExpiresAt time.Time                          `bson:"expiresAt"`
-	Version   uint                               `bson:"version"`
-	Threshold uint                               `bson:"threshold"`
-	Content   *data.SignedPayload[data.RootRole] `bson:"signedPayload"`
+	ID        primitive.ObjectID                   `bson:"_id,omitempty"`
+	RepoID    string                               `bson:"repoId"`
+	ExpiresAt time.Time                            `bson:"expiresAt"`
+	Version   uint                                 `bson:"version"`
+	Threshold uint                                 `bson:"threshold"`
+	Content   *data.SignedPayload[data.RepoSigned] `bson:"signedPayload"`
 }
 
 // SignedContentMongoRepository implementation of db.TufSignedContent for MongoDb repo

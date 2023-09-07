@@ -1,6 +1,7 @@
 package data
 
 import (
+	"strings"
 	"time"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
@@ -51,7 +52,7 @@ func DefaultExpires(role RoleType) time.Time {
 
 // NewRoleType returns a new RoleType from a string
 func NewRoleType(name string) (RoleType, error) {
-	role := RoleType(name)
+	role := RoleType(strings.ToLower(name))
 	if _, ok := TopLevelRoles[role]; !ok {
 		return "", apperrors.NewAppError(apperrors.ErrorDataValidation, "tuf: invalid role '"+name+"'")
 	}

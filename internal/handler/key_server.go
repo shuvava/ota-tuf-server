@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -22,11 +23,14 @@ const (
 	pathKeyID         = "keyID"
 	pathRepoID        = "repoID"
 	pathVersion       = "version"
+	pathRole          = "role"
 	PathKeyServerRepo = "/root/:" + pathRepoID
 	//PathKeyServerRepoWithVersion is the path to create a new key repository
 	PathKeyServerRepoWithVersion = PathKeyServerRepo + "/:" + pathVersion
 	// PathKeyServerRepoWithKeyID is path to delete private key from the repo
 	PathKeyServerRepoWithKeyID = PathKeyServerRepo + "/private_keys/:" + pathKeyID
+	// PathKeyServerRepoWithRole is path to sign payload by provided role of the repo
+	PathKeyServerRepoWithRole = PathKeyServerRepo + "/:" + pathRole
 )
 
 // CreateRoot creates a new TUF key repository
@@ -67,7 +71,7 @@ func GetRepoSignedContent(ctx echo.Context, svc *services.RepositoryService) err
 	repoID, err := getRepoID(ctx)
 	if repoID == data.RepoIDNil {
 		var typedErr apperrors.AppError
-		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidation {
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidationParamMissing {
 			// try to get repoID from the namespace
 			ns := cmnapi.GetNamespace(ctx)
 			r, e := svc.FindByNamespace(c, ns)
@@ -89,7 +93,7 @@ func GetRepoSignedContent(ctx echo.Context, svc *services.RepositoryService) err
 }
 
 // GetRepoSignedContentForVersion returns repo signed metadata for requested version
-func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositoryService, scsvc *services.SignedContentService) error {
+func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositoryService, scsvc *services.RepoVersionService) error {
 	c := cmnapi.GetRequestContext(ctx)
 	ver, err := getVersion(ctx)
 	if err != nil {
@@ -98,7 +102,7 @@ func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositorySe
 	repoID, err := getRepoID(ctx)
 	if repoID == data.RepoIDNil {
 		var typedErr apperrors.AppError
-		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidation {
+		if errors.As(err, &typedErr) && typedErr.ErrorCode == errcodes.ErrorAPIRequestValidationParamMissing {
 			// try to get repoID from the namespace
 			ns := cmnapi.GetNamespace(ctx)
 			r, e := svc.FindByNamespace(c, ns)
@@ -111,7 +115,7 @@ func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositorySe
 	if err != nil {
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
-	res, err := scsvc.GetSignatureVersion(c, repoID, ver)
+	res, err := scsvc.GetVersion(c, repoID, ver)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}
@@ -119,12 +123,11 @@ func GetRepoSignedContentForVersion(ctx echo.Context, svc *services.RepositorySe
 	return ctx.JSON(http.StatusOK, res)
 }
 
-// DeletePrivateKey handler  delete private key from TUF repo key
+// DeletePrivateKey handler delete private key from TUF repo key
 func DeletePrivateKey(ctx echo.Context, svc *services.KeyRepositoryService) error {
 	c := cmnapi.GetRequestContext(ctx)
 	repoID, err := getRepoID(ctx)
 	if repoID == data.RepoIDNil || err != nil {
-		err = apperrors.NewAppError(errcodes.ErrorAPIRequestValidation, "parameter repoID missing or invalid")
 		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
 	}
 	keyID, err := getKeyID(ctx)
@@ -136,4 +139,30 @@ func DeletePrivateKey(ctx echo.Context, svc *services.KeyRepositoryService) erro
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}
 	return ctx.NoContent(http.StatusNoContent)
+}
+
+// SignPayload handler to sign provided payload by role keys
+func SignPayload(ctx echo.Context, svc *services.RepositoryService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil || err != nil {
+		err = apperrors.NewAppError(errcodes.ErrorAPIRequestValidationParamMissing, "parameter repoID missing or invalid")
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	role, err := getRole(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	var payload interface{}
+	if err = json.NewDecoder(ctx.Request().Body).Decode(&payload); err != nil {
+		err = apperrors.NewAppError(errcodes.ErrorAPIRequestValidationBodyValidation, "error on body validation")
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	res, err := svc.SignPayload(c, repoID, role, payload)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
+	return ctx.JSON(http.StatusOK, res)
+
 }

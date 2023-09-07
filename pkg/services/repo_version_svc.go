@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/shuvava/go-logging/logger"
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/ota-tuf-server/internal/db"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
+
+	"github.com/shuvava/go-logging/logger"
 )
 
 const (
@@ -17,23 +18,23 @@ const (
 	firstVersionNumber = 0
 )
 
-// SignedContentService controls TUF SerializedKey roles life cycle
-type SignedContentService struct {
+// RepoVersionService controls TUF SerializedKey roles life cycle
+type RepoVersionService struct {
 	log logger.Logger
 	db  db.TufSignedContent
 }
 
-// NewSignedContentService creates new instance of services.SignedContentService
-func NewSignedContentService(l logger.Logger, db db.TufSignedContent) *SignedContentService {
+// NewRepoVersionService creates new instance of services.RepoVersionService
+func NewRepoVersionService(l logger.Logger, db db.TufSignedContent) *RepoVersionService {
 	log := l.SetArea("signed-content-service")
-	return &SignedContentService{
+	return &RepoVersionService{
 		log: log,
 		db:  db,
 	}
 }
 
-// GetCurrentSignature returns current signature for data.RepoID
-func (svc *SignedContentService) GetCurrentSignature(ctx context.Context, repoID data.RepoID) (*data.SignedRootRole, error) {
+// GetCurrentVersion returns current signature for data.RepoID
+func (svc *RepoVersionService) GetCurrentVersion(ctx context.Context, repoID data.RepoID) (*data.SignedRootRole, error) {
 	currentVer, err := svc.db.GetMaxVersion(ctx, repoID)
 	if err != nil {
 		return nil, err
@@ -44,9 +45,9 @@ func (svc *SignedContentService) GetCurrentSignature(ctx context.Context, repoID
 	return svc.db.FindVersion(ctx, repoID, currentVer)
 }
 
-// GetSignatureVersion returns signature of data.RepoID for version
-func (svc *SignedContentService) GetSignatureVersion(ctx context.Context, repoID data.RepoID, version uint) (*data.SignedRootRole, error) {
-	log := svc.log.SetOperation("GetSignatureVersion").WithContext(ctx)
+// GetVersion returns signature of data.RepoID for version
+func (svc *RepoVersionService) GetVersion(ctx context.Context, repoID data.RepoID, version uint) (*data.SignedRootRole, error) {
+	log := svc.log.SetOperation("GetVersion").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	exist, err := svc.db.Exists(ctx, repoID, version)
 	if err != nil {
@@ -59,9 +60,9 @@ func (svc *SignedContentService) GetSignatureVersion(ctx context.Context, repoID
 	return svc.db.FindVersion(ctx, repoID, version)
 }
 
-// CreateNewSignature creates the first data.SignedRootRole for the data.RepoID
-func (svc *SignedContentService) CreateNewSignature(ctx context.Context, repoID data.RepoID, keys []*data.RepoKey, threshold uint) error {
-	log := svc.log.SetOperation("CreateNewSignature").WithContext(ctx)
+// CreateFirstVersion creates the first data.SignedRootRole for the data.RepoID
+func (svc *RepoVersionService) CreateFirstVersion(ctx context.Context, repoID data.RepoID, keys []*data.RepoKey, threshold uint) error {
+	log := svc.log.SetOperation("CreateFirstVersion").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	b, err := svc.db.Exists(ctx, repoID, firstVersionNumber)
 	if err != nil {
@@ -74,35 +75,21 @@ func (svc *SignedContentService) CreateNewSignature(ctx context.Context, repoID 
 	return err
 }
 
-// UpdateSignature update signature of the data.Repo
-func (svc *SignedContentService) UpdateSignature(ctx context.Context, sig *data.SignedRootRole, keys []*data.RepoKey) (*data.SignedRootRole, error) {
-	log := svc.log.SetOperation("UpdateSignature").WithContext(ctx)
+// UpdateRepoVersion update signature of the data.Repo
+func (svc *RepoVersionService) UpdateRepoVersion(ctx context.Context, sig *data.SignedRootRole, keys []*data.RepoKey) (*data.SignedRootRole, error) {
+	log := svc.log.SetOperation("UpdateRepoVersion").WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
-	//currentVer, err := svc.db.GetMaxVersion(ctx, repoID)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if currentVer <= firstVersionNumber {
-	//	return nil, apperrors.NewAppError(ErrorMissingSignedRole, "no active version found")
-	//}
-	//sig, err := svc.db.FindVersion(ctx, repoID, currentVer)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if sig.ExpiresAt.Before(time.Now().Add(time.Hour).UTC()) {
-	//	// should sign new version
-	//}
 	return svc.createAndPersist(ctx, sig.RepoID, keys, sig.Version, sig.Threshold)
 }
 
 // createAndPersist creates data.SignedRootRole with version 1 and persist in data storage
-func (svc *SignedContentService) createAndPersist(ctx context.Context, repoID data.RepoID, keys []*data.RepoKey, pervVer uint, threshold uint) (*data.SignedRootRole, error) {
+func (svc *RepoVersionService) createAndPersist(ctx context.Context, repoID data.RepoID, keys []*data.RepoKey, pervVer uint, threshold uint) (*data.SignedRootRole, error) {
 	r, err := createNewVersion(pervVer, keys, threshold)
 	if err != nil {
 		return nil, err
 	}
 	keyMap := createMap(keys)
-	sig, err := signRootRole(repoID, r, keyMap, threshold)
+	sig, err := signRepo(repoID, r, keyMap, threshold)
 	if err != nil {
 		return nil, err
 	}
@@ -112,20 +99,20 @@ func (svc *SignedContentService) createAndPersist(ctx context.Context, repoID da
 	return sig, nil
 }
 
-// createNewVersion creates the next version of data.RootRole for data.Repo
-func createNewVersion(pervVer uint, keys []*data.RepoKey, threshold uint) (*data.RootRole, error) {
+// createNewVersion creates the next version of data.RepoSigned for data.Repo
+func createNewVersion(pervVer uint, keys []*data.RepoKey, threshold uint) (*data.RepoSigned, error) {
 	keyMap, keyRolesMap, err := createKeyMaps(keys)
 	if err != nil {
 		return nil, err
 	}
-	return data.NewRootRole(keyMap, keyRolesMap, pervVer+1, time.Now().Add(defaultRoleExpire), threshold), nil
+	return data.NewRepoSigned(keyMap, keyRolesMap, pervVer+1, time.Now().Add(defaultRoleExpire), threshold), nil
 }
 
-// signRootRole sings data.RootRole for data.RepoID
-func signRootRole(repoID data.RepoID, role *data.RootRole, keys map[data.KeyID]*data.RepoKey, threshold uint) (*data.SignedRootRole, error) {
-	rootKeyRole, ok := role.KeyRoles[data.RoleTypeRoot]
+// signRepo sings data.RepoSigned for data.RepoID
+func signRepo(repoID data.RepoID, repoSigned *data.RepoSigned, keys map[data.KeyID]*data.RepoKey, threshold uint) (*data.SignedRootRole, error) {
+	rootKeyRole, ok := repoSigned.KeyRoles[data.RoleTypeRoot]
 	if !ok || len(rootKeyRole.Keys) == 0 {
-		return nil, apperrors.NewAppError(ErrorSvcSignedContentKeyNotFound, "failed to find key with root role")
+		return nil, apperrors.NewAppError(ErrorSvcSignedContentKeyNotFound, "failed to find key with root repoSigned")
 	}
 	rootKeys := make([]*data.RepoKey, len(rootKeyRole.Keys))
 	for i, keyID := range rootKeyRole.Keys {
@@ -135,14 +122,14 @@ func signRootRole(repoID data.RepoID, role *data.RootRole, keys map[data.KeyID]*
 			return nil, apperrors.NewAppError(ErrorSvcSignedContentKeyNotFound, fmt.Sprintf("failed to find key with ID %s", keyID))
 		}
 	}
-	sig, err := role.Sign(rootKeys)
+	sig, err := repoSigned.Sign(rootKeys)
 	if err != nil {
 		return nil, err
 	}
 	signedRole := &data.SignedRootRole{
 		RepoID:    repoID,
-		ExpiresAt: role.ExpiresAt,
-		Version:   role.Version,
+		ExpiresAt: repoSigned.ExpiresAt,
+		Version:   repoSigned.Version,
 		Content:   sig,
 		Threshold: threshold,
 	}

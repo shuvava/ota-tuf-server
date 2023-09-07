@@ -41,6 +41,6 @@ func (s *Server) initDbService(ctx context.Context) {
 func (s *Server) initServices(ctx context.Context) {
 	s.initDbService(ctx)
 	s.svc.KeyRepoSvc = services.NewKeyRepositoryService(s.log, s.svc.KeyRepo)
-	s.svc.SignedContentSvc = services.NewSignedContentService(s.log, s.svc.SignedContent)
+	s.svc.SignedContentSvc = services.NewRepoVersionService(s.log, s.svc.SignedContent)
 	s.svc.RepoSvc = services.NewRepositoryService(s.log, s.svc.KeyRepoSvc, s.svc.SignedContentSvc, s.svc.Repo)
 }

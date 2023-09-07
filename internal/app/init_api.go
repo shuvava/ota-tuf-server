@@ -3,14 +3,14 @@ package app
 import (
 	"context"
 
-	"github.com/labstack/echo-contrib/prometheus"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/shuvava/ota-tuf-server/internal/handler"
+	"github.com/shuvava/ota-tuf-server/pkg/version"
 
 	cmnapi "github.com/shuvava/go-ota-svc-common/api"
 
-	"github.com/shuvava/ota-tuf-server/internal/handler"
-	"github.com/shuvava/ota-tuf-server/pkg/version"
+	"github.com/labstack/echo-contrib/prometheus"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 const (
@@ -72,6 +72,9 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	})
 	group.DELETE(handler.PathKeyServerRepoWithKeyID, func(c echo.Context) error {
 		return handler.DeletePrivateKey(c, s.svc.KeyRepoSvc)
+	})
+	group.POST(handler.PathKeyServerRepoWithRole, func(c echo.Context) error {
+		return handler.SignPayload(c, s.svc.RepoSvc)
 	})
 }
 

@@ -3,11 +3,12 @@ package services
 import (
 	"context"
 
-	"github.com/shuvava/go-logging/logger"
-
+	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/ota-tuf-server/internal/db"
 	"github.com/shuvava/ota-tuf-server/pkg/data"
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
+
+	"github.com/shuvava/go-logging/logger"
 )
 
 // KeyRepositoryService is the service responsible for managing keys of repositories
@@ -67,6 +68,25 @@ func (svc *KeyRepositoryService) ExistsKeyRole(ctx context.Context, repoID data.
 // GetRepoKeys returns []data.RepoKey for provided repoID
 func (svc *KeyRepositoryService) GetRepoKeys(ctx context.Context, repoID data.RepoID) ([]*data.RepoKey, error) {
 	return svc.db.FindByRepoID(ctx, repoID)
+}
+
+// GetRepoKeysForRole returns []data.RepoKey for provided repoID and role
+func (svc *KeyRepositoryService) GetRepoKeysForRole(ctx context.Context, repoID data.RepoID, role data.RoleType) ([]*data.RepoKey, error) {
+	allKeys, err := svc.db.FindByRepoID(ctx, repoID)
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]*data.RepoKey, 0)
+	for _, k := range allKeys {
+		if k.Role == role {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) == 0 {
+		err := apperrors.NewAppError(ErrorSvcSignedContentKeyNotFound, string("no key found for role"+role))
+		return nil, err
+	}
+	return keys, nil
 }
 
 // DeletePrivateKey removes private key

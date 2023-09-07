@@ -2,6 +2,7 @@ package data
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
@@ -90,4 +91,28 @@ func (sig *ClientSignature) ToSignature() *Signature {
 		Method: sig.Method,
 		Value:  sig.Value,
 	}
+}
+
+// SignPayload sign provided payload with RepoKey
+func SignPayload(payload interface{}, keys []*RepoKey) ([]*ClientSignature, error) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil, apperrors.NewAppError(
+			ErrorSignatureSerialization,
+			err.Error(),
+		)
+	}
+	signatures := make([]*ClientSignature, 0)
+	for _, key := range keys {
+		s, err := key.ToSinger()
+		if err != nil {
+			return nil, err
+		}
+		sig, err := NewClientSignature(s, b)
+		if err != nil {
+			return nil, err
+		}
+		signatures = append(signatures, sig)
+	}
+	return signatures, nil
 }
