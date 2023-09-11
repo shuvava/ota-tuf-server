@@ -56,8 +56,8 @@ func (rr *RepoSigned) GetRoleKeys(rtype RoleType) []KeyID {
 }
 
 // Sign create SignedPayload for the RepoSigned
-func (rr *RepoSigned) Sign(keys []*RepoKey) (*SignedPayload[RepoSigned], error) {
-	signatures, err := SignPayload(rr, keys)
+func (rr *RepoSigned) Sign(keys []*RepoKey, threshold uint) (*SignedPayload[RepoSigned], error) {
+	signatures, err := SignPayload(rr, keys, threshold)
 	if err != nil {
 		return nil, err
 	}

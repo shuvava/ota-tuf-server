@@ -27,12 +27,14 @@ const (
 	PathKeyServerRepo = "/root/:" + pathRepoID
 	//PathKeyServerRepoWithVersion is the path to create a new key repository
 	PathKeyServerRepoWithVersion = PathKeyServerRepo + "/:" + pathVersion
-	// PathKeyServerRepoWithKeyID is path to delete private key from the repo
-	PathKeyServerRepoWithKeyID = PathKeyServerRepo + "/private_keys/:" + pathKeyID
+	// PathKeyServerDelPrivateKey is path to delete private key from the repo
+	PathKeyServerDelPrivateKey = PathKeyServerRepo + "/private_keys/:" + pathKeyID
 	// PathKeyServerRepoWithRole is path to sign payload by provided role of the repo
 	PathKeyServerRepoWithRole = PathKeyServerRepo + "/:" + pathRole
 	// PathKeyServerRepoUnsigned is path to get current state of TUF repo without signature
 	PathKeyServerRepoUnsigned = PathKeyServerRepo + "/unsigned"
+	// PathKeyServerRepoKey returns key of the repo by ID
+	PathKeyServerRepoKey = PathKeyServerRepo + "/keys/:" + pathKeyID
 )
 
 // CreateRoot creates a new TUF key repository
@@ -182,4 +184,22 @@ func GetRepoWithoutSignature(ctx echo.Context, svc *services.RepositoryService) 
 	}
 	ctx.Response().Header().Set(api.HeaderRepoID, repoID.String())
 	return ctx.JSON(http.StatusOK, res)
+}
+
+// GetRepoKey handler returns repo's key
+func GetRepoKey(ctx echo.Context, svc *services.KeyRepositoryService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil || err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	keyID, err := getKeyID(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	key, err := svc.GetRepoKey(c, repoID, keyID)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	return ctx.JSON(http.StatusOK, key.Key)
 }

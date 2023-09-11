@@ -1,6 +1,10 @@
 package data
 
-import "github.com/shuvava/ota-tuf-server/pkg/encryption"
+import (
+	"time"
+
+	"github.com/shuvava/ota-tuf-server/pkg/encryption"
+)
 
 // RepoKey is a key for a repo
 type RepoKey struct {
@@ -11,7 +15,8 @@ type RepoKey struct {
 	// KeyID is the id of the key
 	KeyID KeyID `json:"key_id"`
 	// Key is the public/private key
-	Key encryption.SerializedKey `json:"key"`
+	Key     encryption.SerializedKey `json:"key"`
+	Created time.Time                `json:"created"`
 }
 
 // ToPublicKey converts internal RepoKey object to the SerializedKey with only public key in it
@@ -30,4 +35,9 @@ func (rk RepoKey) ToSinger() (encryption.Signer, error) {
 		return nil, err
 	}
 	return key, nil
+}
+
+// HasPrivateKey RepoKey has private key
+func (rk RepoKey) HasPrivateKey() bool {
+	return rk.Key.Value.Private != nil
 }

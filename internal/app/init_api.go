@@ -70,7 +70,7 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	group.GET(handler.PathKeyServerRepoWithVersion, func(c echo.Context) error {
 		return handler.GetRepoSignedContentForVersion(c, s.svc.RepoSvc, s.svc.SignedContentSvc)
 	})
-	group.DELETE(handler.PathKeyServerRepoWithKeyID, func(c echo.Context) error {
+	group.DELETE(handler.PathKeyServerDelPrivateKey, func(c echo.Context) error {
 		return handler.DeletePrivateKey(c, s.svc.KeyRepoSvc)
 	})
 	group.POST(handler.PathKeyServerRepoWithRole, func(c echo.Context) error {
@@ -78,6 +78,9 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	})
 	group.GET(handler.PathKeyServerRepoUnsigned, func(c echo.Context) error {
 		return handler.GetRepoWithoutSignature(c, s.svc.RepoSvc)
+	})
+	group.GET(handler.PathKeyServerRepoKey, func(c echo.Context) error {
+		return handler.GetRepoKey(c, s.svc.KeyRepoSvc)
 	})
 }
 

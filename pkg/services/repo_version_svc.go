@@ -62,7 +62,8 @@ func (svc *RepoVersionService) GetVersion(ctx context.Context, repoID data.RepoI
 
 // CreateFirstVersion creates the first data.SignedRootRole for the data.RepoID
 func (svc *RepoVersionService) CreateFirstVersion(ctx context.Context, repoID data.RepoID, keys []*data.RepoKey, threshold uint) error {
-	log := svc.log.SetOperation("CreateFirstVersion").WithContext(ctx)
+	log := svc.log.SetOperation("CreateFirstVersion").
+		WithContext(ctx)
 	defer log.TrackFuncTime(time.Now())
 	b, err := svc.db.Exists(ctx, repoID, firstVersionNumber)
 	if err != nil {
@@ -122,7 +123,7 @@ func signRepo(repoID data.RepoID, repoSigned *data.RepoSigned, keys map[data.Key
 			return nil, apperrors.NewAppError(ErrorSvcSignedContentKeyNotFound, fmt.Sprintf("failed to find key with ID %s", keyID))
 		}
 	}
-	sig, err := repoSigned.Sign(rootKeys)
+	sig, err := repoSigned.Sign(rootKeys, threshold)
 	if err != nil {
 		return nil, err
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/shuvava/ota-tuf-server/pkg/encryption"
 
@@ -94,7 +95,7 @@ func (sig *ClientSignature) ToSignature() *Signature {
 }
 
 // SignPayload sign provided payload with RepoKey
-func SignPayload(payload interface{}, keys []*RepoKey) ([]*ClientSignature, error) {
+func SignPayload(payload interface{}, keys []*RepoKey, threshold uint) ([]*ClientSignature, error) {
 	b, err := json.Marshal(payload)
 	if err != nil {
 		return nil, apperrors.NewAppError(
@@ -103,6 +104,22 @@ func SignPayload(payload interface{}, keys []*RepoKey) ([]*ClientSignature, erro
 		)
 	}
 	signatures := make([]*ClientSignature, 0)
+	// sort key by creating time
+	sort.Slice(keys, func(i, j int) bool {
+		return keys[i].Created.Before(keys[j].Created)
+	})
+	n := uint(0)
+	for _, val := range keys {
+		// filter key having private keys
+		if val.HasPrivateKey() {
+			keys[n] = val
+			n++
+		}
+		if n >= threshold {
+			break
+		}
+	}
+	keys = keys[:n]
 	for _, key := range keys {
 		s, err := key.ToSinger()
 		if err != nil {

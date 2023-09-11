@@ -174,7 +174,7 @@ func (svc *RepositoryService) SignPayload(ctx context.Context, repoID data.RepoI
 	if err != nil {
 		return nil, err
 	}
-	sig, err := data.SignPayload(payload, keys)
+	sig, err := data.SignPayload(payload, keys, repo.Threshold)
 	if err != nil {
 		return nil, err
 	}

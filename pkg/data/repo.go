@@ -11,6 +11,6 @@ type Repo struct {
 	Namespace      cmndata.Namespace  `json:"namespace"`
 	RepoID         RepoID             `json:"repoId"`
 	KeyType        encryption.KeyType `json:"keyType"`
-	Threshold      uint               `json:"threshold"`
+	Threshold      uint               `json:"threshold"` // number of keys required to sign content to be valid
 	CurrentVersion uint               `json:"currentVersion"`
 }

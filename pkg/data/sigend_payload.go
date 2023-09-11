@@ -14,7 +14,7 @@ type RoleSign struct {
 
 // NewSignedPayload sings payload with RoleType
 func NewSignedPayload(payload interface{}, role RoleType, keys []*RepoKey, threshold uint) (*SignedPayload[RoleSign], error) {
-	signatures, err := SignPayload(payload, keys)
+	signatures, err := SignPayload(payload, keys, threshold)
 	if err != nil {
 		return nil, err
 	}

@@ -50,10 +50,12 @@ func NewSignedContentMongoRepository(logger logger.Logger, db *intMongo.Db) *Sig
 
 // Create persist new data.SignedRootRole in database
 func (store *SignedContentMongoRepository) Create(ctx context.Context, obj *data.SignedRootRole) error {
-	log := store.log.SetOperation("Create").WithContext(ctx)
+	log := store.log.SetOperation("Create").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, obj.RepoID).
+		WithField(intData.LogFieldVersion, obj.Version)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldRepoID, obj.RepoID).
-		WithField(intData.LogFieldVersion, obj.Version).
+	log.
 		Debug("Creating new SignedContent")
 
 	exists, err := store.Exists(ctx, obj.RepoID, obj.Version)
@@ -69,13 +71,9 @@ func (store *SignedContentMongoRepository) Create(ctx context.Context, obj *data
 	dto := toSignedContentDTO(obj)
 	_, err = store.db.InsertOne(ctx, store.coll, dto)
 	if err == nil {
-		log.WithField(intData.LogFieldRepoID, obj.RepoID).
-			WithField(intData.LogFieldVersion, obj.Version).
-			Info("SignedContent created successful")
+		log.Info("SignedContent created successful")
 	} else {
-		log.WithField(intData.LogFieldRepoID, obj.RepoID).
-			WithField(intData.LogFieldVersion, obj.Version).
-			Warn("SignedContent creation failed")
+		log.Warn("SignedContent creation failed")
 	}
 	return err
 }
@@ -97,26 +95,23 @@ func (store *SignedContentMongoRepository) Exists(ctx context.Context, repoID da
 
 // FindVersion returns data.SignedRootRole with Version equal to ver parameter
 func (store *SignedContentMongoRepository) FindVersion(ctx context.Context, repoID data.RepoID, ver uint) (*data.SignedRootRole, error) {
-	log := store.log.SetOperation("FindVersion").WithContext(ctx)
+	log := store.log.SetOperation("FindVersion").
+		WithContext(ctx).
+		WithField(intData.LogFieldRepoID, repoID).
+		WithField(intData.LogFieldVersion, ver)
 	defer log.TrackFuncTime(time.Now())
-	log.WithField(intData.LogFieldRepoID, repoID).
-		WithField(intData.LogFieldVersion, ver).
-		Debug("Looking up SignedContent")
+	log.Debug("Looking up SignedContent")
 	filter := getOneSignedContentFilter(repoID, ver)
 	var dto repoSignedContentDTO
 	err := store.db.GetOne(ctx, store.coll, filter, &dto)
 	if err != nil {
 		var typedErr apperrors.AppError
 		if errors.As(err, &typedErr) && typedErr.ErrorCode == apperrors.ErrorDbNoDocumentFound {
-			log.WithField(intData.LogFieldRepoID, repoID).
-				WithField(intData.LogFieldVersion, ver).
-				Warn("SignedContent not found")
+			log.Warn("SignedContent not found")
 		}
 		return nil, err
 	}
-	log.WithField(intData.LogFieldRepoID, repoID).
-		WithField(intData.LogFieldVersion, ver).
-		Debug("Object Found")
+	log.Debug("Object Found")
 	return toSignedContentModel(dto)
 }
 

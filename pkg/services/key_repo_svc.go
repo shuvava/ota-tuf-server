@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	"github.com/shuvava/go-ota-svc-common/apperrors"
 	"github.com/shuvava/ota-tuf-server/internal/db"
@@ -37,10 +38,11 @@ func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repo *data.Re
 		return nil, err
 	}
 	keyObj := &data.RepoKey{
-		RepoID: repo.RepoID,
-		Role:   role,
-		KeyID:  data.NewKeyID(key),
-		Key:    *keySerialized,
+		RepoID:  repo.RepoID,
+		Role:    role,
+		KeyID:   data.NewKeyID(key),
+		Key:     *keySerialized,
+		Created: time.Now().UTC(),
 	}
 	err = svc.db.Create(ctx, keyObj)
 
@@ -51,11 +53,13 @@ func (svc *KeyRepositoryService) CreateNewKey(ctx context.Context, repo *data.Re
 func (svc *KeyRepositoryService) CreateAllRolesKeys(ctx context.Context, repo *data.Repo) ([]*data.RepoKey, error) {
 	keys := make([]*data.RepoKey, 0)
 	for role := range data.TopLevelRoles {
-		k, err := svc.CreateNewKey(ctx, repo, role)
-		if err != nil {
-			return nil, err
+		for i := 1; i <= int(repo.Threshold); i++ {
+			k, err := svc.CreateNewKey(ctx, repo, role)
+			if err != nil {
+				return nil, err
+			}
+			keys = append(keys, k)
 		}
-		keys = append(keys, k)
 	}
 	return keys, nil
 }
@@ -65,9 +69,14 @@ func (svc *KeyRepositoryService) ExistsKeyRole(ctx context.Context, repoID data.
 	return svc.db.ExistsKeyRole(ctx, repoID, role)
 }
 
-// GetRepoKeys returns []data.RepoKey for provided repoID
+// GetRepoKeys returns []data.RepoKey for provided data.RepoID
 func (svc *KeyRepositoryService) GetRepoKeys(ctx context.Context, repoID data.RepoID) ([]*data.RepoKey, error) {
 	return svc.db.FindByRepoID(ctx, repoID)
+}
+
+// GetRepoKey returns data.RepoKey for provided data.RepoID and data.KeyID
+func (svc *KeyRepositoryService) GetRepoKey(ctx context.Context, repoID data.RepoID, keyID data.KeyID) (*data.RepoKey, error) {
+	return svc.db.FindByKeyID(ctx, repoID, keyID)
 }
 
 // GetRepoKeysForRole returns []data.RepoKey for provided repoID and role
