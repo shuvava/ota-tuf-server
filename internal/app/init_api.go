@@ -82,6 +82,9 @@ func keyServerRoutes(s *Server, group *echo.Group) {
 	group.GET(handler.PathKeyServerRepoKey, func(c echo.Context) error {
 		return handler.GetRepoKey(c, s.svc.KeyRepoSvc)
 	})
+	group.GET(handler.PathKeyServerRepoRoleKey, func(c echo.Context) error {
+		return handler.GetRepoRoleKeys(c, s.svc.KeyRepoSvc)
+	})
 }
 
 func initHealthRoutes(s *Server, e *echo.Echo) {

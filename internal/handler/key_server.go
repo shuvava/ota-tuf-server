@@ -34,7 +34,8 @@ const (
 	// PathKeyServerRepoUnsigned is path to get current state of TUF repo without signature
 	PathKeyServerRepoUnsigned = PathKeyServerRepo + "/unsigned"
 	// PathKeyServerRepoKey returns key of the repo by ID
-	PathKeyServerRepoKey = PathKeyServerRepo + "/keys/:" + pathKeyID
+	PathKeyServerRepoKey     = PathKeyServerRepo + "/keys/:" + pathKeyID
+	PathKeyServerRepoRoleKey = PathKeyServerRepo + "/keys/:" + pathRole + "/pairs"
 )
 
 // CreateRoot creates a new TUF key repository
@@ -202,4 +203,26 @@ func GetRepoKey(ctx echo.Context, svc *services.KeyRepositoryService) error {
 		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
 	}
 	return ctx.JSON(http.StatusOK, key.Key)
+}
+
+func GetRepoRoleKeys(ctx echo.Context, svc *services.KeyRepositoryService) error {
+	c := cmnapi.GetRequestContext(ctx)
+	repoID, err := getRepoID(ctx)
+	if repoID == data.RepoIDNil || err != nil {
+		err = apperrors.NewAppError(errcodes.ErrorAPIRequestValidationParamMissing, "parameter repoID missing or invalid")
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	role, err := getRole(ctx)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, cmnapi.NewErrorResponse(c, http.StatusBadRequest, err))
+	}
+	keys, err := svc.GetRepoKeysForRole(c, repoID, role)
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, cmnapi.NewErrorResponse(c, http.StatusInternalServerError, err))
+	}
+	res := make([]encryption.SerializedKey, len(keys))
+	for i, k := range keys {
+		res[i] = k.Key
+	}
+	return ctx.JSON(http.StatusOK, res)
 }
